@@ -1,0 +1,64 @@
+{
+  "name": "@chronopilot/client-assist",
+  "version": "0.11.0",
+  "private": true,
+  "type": "module",
+  "main": "desktop/main.cjs",
+  "description": "Authorized Chronomancy healing and Frost PvE assist for a custom World of ClaudeCraft desktop build",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "integration",
+    "README.md",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "scripts": {
+    "build": "npm run build:library && npm run build:inject",
+    "build:library": "tsc -p tsconfig.json",
+    "build:inject": "esbuild src/injected-entry.ts --bundle --format=iife --platform=browser --target=chrome120 --outfile=dist-inject/chronopilot.js",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "desktop:win": "npm run build && electron-builder --win nsis --x64 --publish never",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "electron": "43.0.0",
+    "electron-builder": "26.15.6",
+    "esbuild": "0.28.1",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.10"
+  },
+  "build": {
+    "appId": "com.chronopilot.lazyclient",
+    "productName": "ChronoPilot Lazy Client",
+    "files": [
+      "desktop/**",
+      "dist-inject/**",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "artifactName": "ChronoPilot-Lazy-Client-${version}-Setup.${ext}"
+  }
+}

@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'">
+  <title>ChronoPilot Controls</title>
+  <link rel="stylesheet" href="control.css">
+</head>
+<body>
+  <header class="hero">
+    <div>
+      <div class="eyebrow"><span class="orb"></span> CHRONOPILOT</div>
+      <h1>Mage PvE Assist</h1>
+      <p id="connection">Waiting for the game…</p>
+    </div>
+    <button id="hide" class="icon-button" title="Hide controls (F10)">—</button>
+  </header>
+
+  <section class="control-strip">
+    <button id="start-stop" class="start" disabled>START ASSIST</button>
+    <label class="pin"><input id="pin" type="checkbox"> Pin over game</label>
+  </section>
+
+  <nav class="tabs" aria-label="Settings pages">
+    <button class="tab active" data-tab="overview">Overview</button>
+    <button class="tab" data-tab="frost">Frost PvE</button>
+    <button class="tab" data-tab="healing">Healing</button>
+    <button class="tab" data-tab="targeting">Targets</button>
+    <button class="tab" data-tab="pvp">PvP</button>
+    <button class="tab" data-tab="skills">Skills</button>
+  </nav>
+
+  <main>
+    <section class="page active" data-page="overview">
+      <article class="card decision-card">
+        <div class="card-heading"><span>Live decision</span><span id="detected-mode" class="badge">SOLO</span></div>
+        <strong id="decision-title">Paused</strong>
+        <p id="decision-reason">Start the game, sign in, and enter the world.</p>
+      </article>
+
+      <article class="card">
+        <h2>Rotation</h2>
+        <label class="field"><span>Combat profile</span>
+          <select data-path="assistProfile">
+            <option value="auto">Auto-detect talents</option>
+            <option value="chronomancy-healer">Chronomancy healer</option>
+            <option value="frost-pve">Frost PvE DPS</option>
+          </select>
+        </label>
+        <p class="hint">Auto reads your learned specialization. Frost loads its own DPS rules and ignores every healing threshold; Chronomancy restores your saved healer setup.</p>
+      </article>
+
+      <article class="card">
+        <h2>Group context</h2>
+        <label class="field"><span>Context</span>
+          <select data-path="mode">
+            <option value="auto">Auto-detect</option>
+            <option value="solo">Solo / questing</option>
+            <option value="party">Party</option>
+            <option value="raid">Raid (10 player)</option>
+            <option value="pvp">PvP / Arena</option>
+          </select>
+        </label>
+        <p class="hint">Context still auto-switches Solo, Party, Raid, and active PvP rules. Frost is PvE-only; the existing Chronomancy PvP engine remains unchanged.</p>
+      </article>
+
+      <article class="card">
+        <h2>Modules</h2>
+        <label class="switch-row"><span><b>Healing</b><small>Priority triage and group healing</small></span><input type="checkbox" data-path="modules.healing"></label>
+        <label class="switch-row"><span><b>Damage to heal</b><small>Attack when healing is stable</small></span><input type="checkbox" data-path="modules.damageToHeal"></label>
+        <label class="switch-row"><span><b>Defensives</b><small>Barriers and reversal tools</small></span><input type="checkbox" data-path="modules.defensives"></label>
+        <label class="switch-row"><span><b>Interrupts</b><small>Counter dangerous enemy casts</small></span><input type="checkbox" data-path="modules.interrupts"></label>
+        <label class="switch-row"><span><b>Resurrection</b><small>Both Reversal spells are linked and saved together</small></span><input type="checkbox" data-path="modules.resurrection"></label>
+      </article>
+
+      <article class="card">
+        <h2>Safety</h2>
+        <label class="switch-row"><span><b>PvP / Arena assist</b><small>Use the dedicated PvP profile in active matches</small></span><input type="checkbox" data-path="pvp.enabled"></label>
+        <label class="switch-row"><span><b>Buff out of combat</b><small>Maintain safe pre-combat buffs</small></span><input type="checkbox" data-path="safety.buffOutOfCombat"></label>
+        <label class="range-row"><span><b>Manual override</b><small>Pause after your own spell input</small></span><output class="range-value"></output><input type="range" min="250" max="3000" step="250" data-path="safety.manualOverrideMs" data-suffix=" ms"></label>
+        <label class="field"><span>Start / stop hotkey</span><button id="hotkey-capture" type="button">[</button></label>
+        <p class="hint">Click the hotkey button, then press the key you want. The default is [.</p>
+      </article>
+    </section>
+
+    <section class="page" data-page="frost">
+      <article class="card">
+        <h2>Frost PvE rotation</h2>
+        <label class="switch-row"><span><b>Smart procs</b><small>Fingers → Brain Freeze → Winter's Chill without overcapping</small></span><input type="checkbox" data-path="frost.smartProcs"></label>
+        <label class="switch-row"><span><b>Smart Glacial burst</b><small>Power Echo and Racing Mind before a five-Icicle Glacial Spike</small></span><input type="checkbox" data-path="frost.smartGlacialBurst"></label>
+        <label class="switch-row"><span><b>Icy Veins on durable targets</b><small>Hold the long cooldown for bosses and durable elites</small></span><input type="checkbox" data-path="frost.icyVeinsDurableOnly"></label>
+        <label class="switch-row"><span><b>Icebind PvE packs</b><small>Freeze nearby packs before a full Glacial Front</small></span><input type="checkbox" data-path="frost.useIcebindPve"></label>
+      </article>
+
+      <article class="card">
+        <h2>Automatic AoE</h2>
+        <label class="range-row"><span><b>Frozen Orb enemies</b><small>Also used on durable targets</small></span><output class="range-value"></output><input type="range" min="2" max="8" step="1" data-path="frost.frozenOrbEnemyCount" data-suffix=" enemies"></label>
+        <label class="range-row"><span><b>Blizzard enemies</b><small>Place under the densest safe engaged cluster</small></span><output class="range-value"></output><input type="range" min="2" max="8" step="1" data-path="frost.blizzardEnemyCount" data-suffix=" enemies"></label>
+        <label class="range-row"><span><b>Glacial Front enemies</b><small>Hold automatically to the full stage-IV release</small></span><output class="range-value"></output><input type="range" min="2" max="8" step="1" data-path="frost.glacialFrontEnemyCount" data-suffix=" enemies"></label>
+        <p class="hint">Blizzard uses the server-authoritative ground-cast command. Glacial Front auto-releases at maximum charge; you still control movement, facing, and positioning.</p>
+      </article>
+
+      <article class="card">
+        <h2>Frost mana & survival</h2>
+        <label class="range-row"><span><b>Conserve mana</b><small>Skip expensive pack tools below this level</small></span><output class="range-value"></output><input type="range" min="0" max="80" step="1" data-path="frost.conserveManaPct" data-scale="100" data-suffix="%"></label>
+        <label class="range-row"><span><b>Stop damage</b><small>Wait below this emergency floor; 0 disables it</small></span><output class="range-value"></output><input type="range" min="0" max="50" step="1" data-path="frost.stopDamageManaPct" data-scale="100" data-suffix="%"></label>
+        <label class="range-row"><span><b>Aetherwell</b><small>Recover mana safely between pulls</small></span><output class="range-value"></output><input type="range" min="5" max="80" step="1" data-path="frost.aetherwellManaPct" data-scale="100" data-suffix="%"></label>
+        <label class="range-row"><span><b>Frostveil HP</b><small>Refresh the personal barrier in combat</small></span><output class="range-value"></output><input type="range" min="20" max="100" step="1" data-path="frost.barrierHpPct" data-scale="100" data-suffix="%"></label>
+        <label class="range-row"><span><b>Cold Coffin HP</b><small>Emergency immunity threshold</small></span><output class="range-value"></output><input type="range" min="10" max="60" step="1" data-path="frost.iceBlockHpPct" data-scale="100" data-suffix="%"></label>
+      </article>
+    </section>
+
+    <section class="page" data-page="healing">
+      <article class="card">
+        <div class="card-heading"><h2>Healing profile</h2>
+          <select id="profile-editor">
+            <option value="solo">Solo</option>
+            <option value="party">Party</option>
+            <option value="raid">Raid</option>
+            <option value="pvp">PvP / Arena</option>
+          </select>
+        </div>
+        <label class="range-row"><span><b>Temporal Mend</b><small>Direct heal below HP</small></span><output class="range-value"></output><input type="range" min="20" max="100" step="1" data-profile="mendHpPct" data-scale="100" data-suffix="%"></label>
+        <label class="range-row"><span><b>Emergency heal</b><small>Urgent healing threshold</small></span><output class="range-value"></output><input type="range" min="10" max="80" step="1" data-profile="emergencyHpPct" data-scale="100" data-suffix="%"></label>
+        <label class="range-row"><span><b>Temporal Barrier</b><small>Shield allies below HP</small></span><output class="range-value"></output><input type="range" min="20" max="100" step="1" data-profile="barrierHpPct" data-scale="100" data-suffix="%"></label>
+      </article>
+
+      <article class="card">
+        <h2>Group healing</h2>
+        <label class="range-row"><span><b>Temporal Cascade HP</b><small>Count allies below this HP</small></span><output class="range-value"></output><input type="range" min="30" max="100" step="1" data-profile="cascadeHpPct" data-scale="100" data-suffix="%"></label>
+        <label class="range-row"><span><b>Cascade allies</b><small>Required injured allies</small></span><output class="range-value"></output><input type="range" min="1" max="10" step="1" data-profile="cascadeCount" data-suffix=" allies"></label>
+        <label class="range-row"><span><b>Mass Barrier HP</b><small>Count allies below this HP</small></span><output class="range-value"></output><input type="range" min="30" max="100" step="1" data-profile="massBarrierHpPct" data-scale="100" data-suffix="%"></label>
+        <label class="range-row"><span><b>Mass Barrier allies</b><small>Required injured allies</small></span><output class="range-value"></output><input type="range" min="1" max="10" step="1" data-profile="massBarrierCount" data-suffix=" allies"></label>
+        <label class="range-row"><span><b>Rewind health loss</b><small>Minimum rewindable loss</small></span><output class="range-value"></output><input type="range" min="5" max="70" step="1" data-profile="rewindLossPct" data-scale="100" data-suffix="%"></label>
+        <label class="range-row"><span><b>Rewind allies</b><small>Required allies with health loss</small></span><output class="range-value"></output><input type="range" min="1" max="10" step="1" data-profile="rewindCount" data-suffix=" allies"></label>
+      </article>
+
+      <article class="card">
+        <h2>Smart healing cooldowns</h2>
+        <label class="switch-row"><span><b>Smart Power Echo</b><small>Repeat an emergency Temporal Mend at 50% power</small></span><input type="checkbox" data-path="thresholds.smartPowerEcho"></label>
+        <label class="switch-row"><span><b>Smart Perfect Moment</b><small>Use repeated full-charge Darts during safe Echo/Cascade healing windows</small></span><input type="checkbox" data-path="thresholds.smartPerfectMoment"></label>
+        <p class="hint">Emergency direct healing and barriers still interrupt the damage-healing rotation.</p>
+      </article>
+
+      <article class="card">
+        <h2>Mana</h2>
+        <label class="range-row"><span><b>Conserve mana</b><small>Prefer efficient casts below; 0 disables conservation</small></span><output class="range-value"></output><input type="range" min="0" max="80" step="1" data-profile="conserveManaPct" data-scale="100" data-suffix="%"></label>
+        <label class="range-row"><span><b>Stop damage</b><small>Save mana for healing below; 0 keeps attacking</small></span><output class="range-value"></output><input type="range" min="0" max="80" step="1" data-profile="stopDamageManaPct" data-scale="100" data-suffix="%"></label>
+        <label class="range-row"><span><b>Aetherwell</b><small>Use mana recovery below</small></span><output class="range-value"></output><input type="range" min="5" max="80" step="1" data-path="thresholds.aetherwellManaPct" data-scale="100" data-suffix="%"></label>
+        <label class="range-row"><span><b>Maximum Surge stacks</b><small>Healthy-mana ceiling, or normal fixed target</small></span><output class="range-value"></output><input type="range" min="1" max="4" step="1" data-path="thresholds.maxSurgeCharges" data-suffix=" stacks"></label>
+        <label class="range-row"><span><b>Minimum Surge stacks</b><small>Used under mana or healing pressure</small></span><output class="range-value"></output><input type="range" min="1" max="4" step="1" data-path="thresholds.lowManaMaxSurgeCharges" data-suffix=" stacks"></label>
+        <label class="switch-row"><span><b>Smart Surge stacks</b><small>Adapt between these limits using mana and group health</small></span><input type="checkbox" data-path="thresholds.smartSurgeCharges"></label>
+      </article>
+
+      <article class="card">
+        <h2>Consumables</h2>
+        <label class="switch-row"><span><b>Health potion</b><small>Use from inventory when needed</small></span><input type="checkbox" data-path="consumables.healthPotion"></label>
+        <label class="range-row"><span><b>Health potion HP</b><small>Drink below HP</small></span><output class="range-value"></output><input type="range" min="5" max="80" step="1" data-path="consumables.healthPotionHpPct" data-scale="100" data-suffix="%"></label>
+        <label class="switch-row"><span><b>Mana potion</b><small>Use from inventory when needed</small></span><input type="checkbox" data-path="consumables.manaPotion"></label>
+        <label class="range-row"><span><b>Mana potion mana</b><small>Drink below mana</small></span><output class="range-value"></output><input type="range" min="5" max="80" step="1" data-path="consumables.manaPotionManaPct" data-scale="100" data-suffix="%"></label>
+        <p class="hint">Out-of-combat drinking stays manual.</p>
+      </article>
+    </section>
+
+    <section class="page" data-page="pvp">
+      <article class="card">
+        <h2>PvP / Arena mode</h2>
+        <label class="switch-row"><span><b>Enable PvP assist</b><small>Auto-detect duels, arenas, Vale Cup, and Thornhollow 5v5</small></span><input type="checkbox" data-path="pvp.enabled"></label>
+        <label class="range-row"><span><b>PvP maximum Surge stacks</b><small>Build as high as four while the team is healthy</small></span><output class="range-value"></output><input type="range" min="1" max="4" step="1" data-path="pvp.maxSurgeCharges" data-suffix=" stacks"></label>
+        <label class="range-row"><span><b>PvP minimum Surge stacks</b><small>Spend early when healing pressure rises</small></span><output class="range-value"></output><input type="range" min="1" max="4" step="1" data-path="pvp.minSurgeCharges" data-suffix=" stacks"></label>
+        <label class="range-row"><span><b>Ice Block HP</b><small>Emergency immunity and debuff cleanse below HP</small></span><output class="range-value"></output><input type="range" min="10" max="60" step="1" data-path="pvp.iceBlockHpPct" data-scale="100" data-suffix="%"></label>
+        <label class="switch-row"><span><b>Blink out of roots</b><small>Moves 15 yd forward and breaks roots</small></span><input type="checkbox" data-path="pvp.blinkOnRoot"></label>
+        <label class="range-row"><span><b>Icebind HP</b><small>Root nearby melee pressure below HP</small></span><output class="range-value"></output><input type="range" min="30" max="100" step="1" data-path="pvp.frostNovaHpPct" data-scale="100" data-suffix="%"></label>
+        <label class="range-row"><span><b>Icebind enemies</b><small>Always root at this nearby enemy count</small></span><output class="range-value"></output><input type="range" min="1" max="5" step="1" data-path="pvp.frostNovaEnemyCount" data-suffix=" enemies"></label>
+        <label class="range-row"><span><b>Polymorph relief HP</b><small>Control a secondary enemy when the lowest ally falls below HP</small></span><output class="range-value"></output><input type="range" min="25" max="90" step="1" data-path="pvp.polymorphHpPct" data-scale="100" data-suffix="%"></label>
+        <label class="range-row"><span><b>Hourglass rescue HP</b><small>Protect and heal a critical ally or self in stasis</small></span><output class="range-value"></output><input type="range" min="10" max="50" step="1" data-path="pvp.hourglassHpPct" data-scale="100" data-suffix="%"></label>
+        <p class="hint">Smart Surge uses these PvP-specific 1–4 limits and ignores mana conservation, but spends earlier when health pressure rises. Ice Block is used before the crowd-control wait. Resurrection is always skipped in PvP.</p>
+      </article>
+      <article class="card">
+        <h2>PvP skills</h2>
+        <div id="pvp-skills" class="skill-grid"></div>
+      </article>
+    </section>
+
+    <section class="page" data-page="targeting">
+      <article class="card">
+        <h2>Enemy targeting</h2>
+        <label class="field"><span>Target mode</span>
+          <select data-path="targeting.enemyMode">
+            <option value="tank-target">Assist tank</option>
+            <option value="assist-member-target">Assist party member</option>
+            <option value="current-target">Current target</option>
+            <option value="lowest-hp">Lowest HP</option>
+            <option value="closest-engaged">Closest engaged</option>
+            <option value="closest-in-range">Closest in range</option>
+          </select>
+        </label>
+        <label class="field"><span>Assigned tank</span><select id="tank-select" data-path="targeting.assignedTankId" data-nullable-number="true"><option value="">Auto-detect</option></select></label>
+        <label class="field"><span>Assist member</span><select id="assist-select" data-path="targeting.assistMemberId" data-nullable-number="true"><option value="">None</option></select></label>
+        <label class="range-row"><span><b>Maximum range</b><small>Ignore enemies farther away</small></span><output class="range-value"></output><input type="range" min="5" max="40" step="1" data-path="targeting.maxTargetRange" data-suffix=" m"></label>
+        <label class="switch-row"><span><b>Auto-pull</b><small>Attack unengaged targets in range</small></span><input type="checkbox" data-path="targeting.autoPull"></label>
+        <label class="switch-row"><span><b>Party targets only</b><small>Do not pick unrelated enemies</small></span><input type="checkbox" data-path="targeting.partyOnly"></label>
+      </article>
+
+      <article class="card">
+        <h2>Friendly targeting</h2>
+        <label class="field"><span>Heal priority</span>
+          <select data-path="targeting.friendlyMode">
+            <option value="lowest-effective-hp">Lowest effective HP</option>
+            <option value="tank-first">Tank first</option>
+            <option value="current-friendly">Current friendly</option>
+          </select>
+        </label>
+        <label class="switch-row"><span><b>Keep Echo on tank</b><small>On locks tank; off moves Echo to endangered allies</small></span><input type="checkbox" data-path="targeting.keepEchoOnTank"></label>
+        <label class="switch-row"><span><b>Natural stream targeting</b><small>Keep the latest healed ally selected; switch to an enemy only when attacking</small></span><input type="checkbox" data-path="targeting.streamTargetSelection"></label>
+        <p class="hint">The real in-game selector follows ChronoPilot's current action. Target switching pauses during raid cutscenes.</p>
+      </article>
+    </section>
+
+    <section class="page" data-page="skills">
+      <article class="card">
+        <h2>Frost PvE</h2>
+        <div id="frost-skills" class="skill-grid"></div>
+      </article>
+      <article class="card">
+        <h2>Healing & utility</h2>
+        <div id="healing-skills" class="skill-grid"></div>
+      </article>
+      <article class="card">
+        <h2>Damage & recovery</h2>
+        <div id="damage-skills" class="skill-grid"></div>
+      </article>
+      <p class="hint">Temporal Reversal and Collective Reversal share one linked Resurrection switch, so changing tabs cannot desynchronize them.</p>
+    </section>
+  </main>
+
+  <footer>F10 hides or restores this panel · Drag the Windows title bar to another monitor</footer>
+  <script src="control.js"></script>
+</body>
+</html>
