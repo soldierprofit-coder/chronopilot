@@ -88,6 +88,7 @@
       <article class="card">
         <h2>Frost PvE rotation</h2>
         <label class="switch-row"><span><b>Auto-summon Water Elemental</b><small>Only after combat, with no valid enemy; never interrupts an active fight</small></span><input type="checkbox" data-path="frost.autoSummonWaterElemental"></label>
+        <label class="switch-row"><span><b>Smart Frostveil pre-shield</b><small>Prepare only for a selected solo target or an engaged/durable group pull</small></span><input type="checkbox" data-path="frost.smartFrostveilPreShield"></label>
         <label class="switch-row"><span><b>Smart procs</b><small>Fingers → Brain Freeze → Winter's Chill without overcapping</small></span><input type="checkbox" data-path="frost.smartProcs"></label>
         <label class="switch-row"><span><b>Smart Glacial burst</b><small>Power Echo and Racing Mind before a five-Icicle Glacial Spike</small></span><input type="checkbox" data-path="frost.smartGlacialBurst"></label>
         <label class="switch-row"><span><b>Icy Veins on durable targets</b><small>Hold the long cooldown for bosses and durable elites</small></span><input type="checkbox" data-path="frost.icyVeinsDurableOnly"></label>
@@ -99,6 +100,7 @@
         <label class="range-row"><span><b>Frozen Orb enemies</b><small>Also used on durable targets</small></span><output class="range-value"></output><input type="range" min="2" max="8" step="1" data-path="frost.frozenOrbEnemyCount" data-suffix=" enemies"></label>
         <label class="range-row"><span><b>Blizzard enemies</b><small>Place under the densest safe engaged cluster</small></span><output class="range-value"></output><input type="range" min="2" max="8" step="1" data-path="frost.blizzardEnemyCount" data-suffix=" enemies"></label>
         <label class="range-row"><span><b>Glacial Front enemies</b><small>Hold automatically to the full stage-IV release</small></span><output class="range-value"></output><input type="range" min="2" max="8" step="1" data-path="frost.glacialFrontEnemyCount" data-suffix=" enemies"></label>
+        <label class="switch-row"><span><b>Glacial Front on durable single targets</b><small>Optional boss use below the configured pack count; off by default</small></span><input type="checkbox" data-path="frost.glacialFrontDurableTarget"></label>
         <p class="hint">Blizzard uses the server-authoritative ground-cast command. Glacial Front auto-releases at maximum charge; you still control movement, facing, and positioning.</p>
       </article>
 

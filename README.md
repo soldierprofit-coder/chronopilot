@@ -11,7 +11,7 @@ The player moves, positions, faces, and handles mechanics manually. ChronoPilot 
 - Frost single-target loop: Rimelance generation, Fingers of Frost anti-overcap, instant Brain Freeze Winterlash, Winter's Chill Ice Lances, and five-Icicle Glacial Spike bursts
 - Frost pack loop: Frozen Orb, densest-cluster Blizzard placement, Icebind setup, Frostsweep, and automatic full-stage Glacial Front
 - Frost upkeep for Aether Insight, Hoarfrost Mantle, Frostveil, Water Elemental, Spellbreak, Cold Coffin, potions, and safe between-pull Aetherwell
-- Durable-target logic for Rune of Power, Icy Veins, Frozen Orb, Glacial Front, Power Echo, and Racing Mind when those talents are learned
+- Durable-target logic for Rune of Power, Icy Veins, Frozen Orb, Power Echo, and Racing Mind when those talents are learned; Glacial Front remains pack-first unless its optional durable-target setting is enabled
 - AoE refuses to fire into protected breakable crowd control
 - MMOminion-style detachable Start/Stop control window
 - Official browser-login handoff; no ChronoPilot password field or credential storage
@@ -47,6 +47,10 @@ The player moves, positions, faces, and handles mechanics manually. ChronoPilot 
 Solo Questing does not move the character or chase enemies. It selects one legal enemy inside the configured range when `Attack new enemies` is enabled. Party and Raid modes never start a new fight. Frost can place Blizzard at a legal position and starts Glacial Front's server-authoritative full charge, but the player still controls facing, movement, mechanics, and early release. PvP mode can move exactly once with Blink when `Blink out of roots` is enabled; no other movement is automated.
 
 The Windows-only ZIP puts `ChronoPilot Lazy Client.exe` directly in the extracted root. The separate source ZIP contains the editable project without the large Windows runtime. Keep every DLL and the `resources` folder beside the executable. This local build is unsigned, so Windows SmartScreen may show an Unknown Publisher warning.
+
+## Version 0.11.2
+
+Frostveil no longer fires simply because Assist is idle. Smart pre-shielding now prepares it for a selected solo target, an engaged party pull, or a durable group target while preserving the existing in-combat HP rescue threshold. Glacial Front stays automatic for configured packs, but durable single-target use is now a separate option and defaults off so Rimelance remains the normal single-target builder. Frost's Skills page now exposes Aetherwell and Icebind, the stream-friendly manual override defaults to 250 ms, and natural stream targeting remains enabled. Regression coverage confirms legal solo acquisition for Rift/Delve-style content and engaged-only targeting for Dungeons and Raids.
 
 ## Version 0.11.1
 

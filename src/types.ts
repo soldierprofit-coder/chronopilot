@@ -95,9 +95,11 @@ export interface HealingProfile {
 
 export interface FrostProfile {
   autoSummonWaterElemental: boolean;
+  smartFrostveilPreShield: boolean;
   blizzardEnemyCount: number;
   frozenOrbEnemyCount: number;
   glacialFrontEnemyCount: number;
+  glacialFrontDurableTarget: boolean;
   conserveManaPct: number;
   stopDamageManaPct: number;
   aetherwellManaPct: number;

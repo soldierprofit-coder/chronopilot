@@ -35,6 +35,8 @@ const FROST_SKILLS = [
   ['rune_of_power', 'Rune of Power'],
   ['counterspell', 'Spellbreak'],
   ['ice_block', 'Cold Coffin'],
+  ['evocation', 'Aetherwell / Evocation'],
+  ['frost_nova', 'Icebind'],
 ];
 const PVP_SKILLS = [
   ['ice_block', 'Ice Block / Cold Coffin'],

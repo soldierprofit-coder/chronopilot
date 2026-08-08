@@ -86,6 +86,30 @@ function frostSettings() {
   return settings;
 }
 
+function partyMember(id = 2): UnitSnapshot {
+  return {
+    id,
+    name: `Party ${id}`,
+    playerClass: 'warrior',
+    hp: 1200,
+    maxHp: 1200,
+    mana: 0,
+    maxMana: 0,
+    x: 2,
+    z: 0,
+    dead: false,
+    connected: true,
+    inCombat: true,
+    role: 'tank',
+    absorb: 0,
+    incomingHeal: 0,
+    rewind: 0,
+    hasAggro: true,
+    targetId: 100,
+    auras: [],
+  };
+}
+
 describe('Frost PvE policy', () => {
   it('auto-detects Frost talents in PvE while preserving the Chronomancy PvP engine', () => {
     const settings = frostSettings();
@@ -173,6 +197,27 @@ describe('Frost PvE policy', () => {
     });
   });
 
+  it('keeps Glacial Front for packs by default, even against a durable single target', () => {
+    const settings = frostSettings();
+    const obs = observation(['glacial_front', 'frostbolt']);
+    obs.enemies[0]!.maxHp = 2500;
+    obs.enemies[0]!.hp = 2500;
+    expect(decideFrost(obs, settings)).toMatchObject({
+      type: 'cast', abilityId: 'frostbolt', targetId: 100,
+    });
+  });
+
+  it('allows optional Glacial Front use against a durable single target', () => {
+    const settings = frostSettings();
+    settings.frost.glacialFrontDurableTarget = true;
+    const obs = observation(['glacial_front', 'frostbolt']);
+    obs.enemies[0]!.maxHp = 2500;
+    obs.enemies[0]!.hp = 2500;
+    expect(decideFrost(obs, settings)).toMatchObject({
+      type: 'cast', abilityId: 'glacial_front', selectTargetId: 100,
+    });
+  });
+
   it('does not use pack AoE beside a protected crowd-controlled target', () => {
     const settings = frostSettings();
     const obs = observation(['frozen_orb', 'blizzard', 'glacial_front', 'frostbolt']);
@@ -202,6 +247,84 @@ describe('Frost PvE policy', () => {
 
     obs.player.auras.push({ id: 'frost_armor', kind: 'buff_armor', remaining: 1200 });
     expect(decideFrost(obs, settings)).toMatchObject({ type: 'cast', abilityId: 'summon_water_elemental' });
+  });
+
+  it('does not spend Frostveil merely because Assist is idle out of combat', () => {
+    const settings = frostSettings();
+    const obs = observation(['ice_barrier']);
+    obs.player.inCombat = false;
+    obs.enemies = [];
+    obs.currentTargetId = null;
+    obs.lastEnemyTargetId = null;
+    expect(decideFrost(obs, settings)).toMatchObject({
+      type: 'wait', reason: 'No valid PvE enemy is selected or engaged in range.',
+    });
+  });
+
+  it('prepares Frostveil for a selected solo Rift or Delve enemy', () => {
+    const settings = frostSettings();
+    const obs = observation(['ice_barrier', 'frostbolt']);
+    obs.player.inCombat = false;
+    obs.enemies[0]!.inCombat = false;
+    expect(decideFrost(obs, settings)).toMatchObject({ type: 'cast', abilityId: 'ice_barrier' });
+  });
+
+  it('prepares Frostveil when a dungeon tank engages without shielding idle groups', () => {
+    const settings = frostSettings();
+    settings.mode = 'party';
+    settings.targeting.enemyMode = 'closest-engaged';
+    settings.targeting.partyOnly = true;
+    const obs = observation(['ice_barrier', 'frostbolt']);
+    obs.player.inCombat = false;
+    const tank = partyMember();
+    obs.party = [obs.player, tank];
+    obs.partyRosterKey = '1,2';
+    obs.enemies[0]!.targetId = tank.id;
+    obs.currentTargetId = null;
+    obs.lastEnemyTargetId = null;
+    expect(decideFrost(obs, settings)).toMatchObject({ type: 'cast', abilityId: 'ice_barrier' });
+
+    obs.enemies[0]!.inCombat = false;
+    tank.inCombat = false;
+    expect(decideFrost(obs, settings)).toMatchObject({
+      type: 'wait', reason: 'No valid PvE enemy is selected or engaged in range.',
+    });
+  });
+
+  it('acquires legal solo Rift and Delve enemies in range when auto-pull is enabled', () => {
+    const settings = frostSettings();
+    settings.targeting.enemyMode = 'closest-in-range';
+    settings.targeting.autoPull = true;
+    const obs = observation(['frostbolt']);
+    obs.player.inCombat = false;
+    obs.enemies[0]!.inCombat = false;
+    obs.currentTargetId = null;
+    obs.lastEnemyTargetId = null;
+    expect(decideFrost(obs, settings)).toMatchObject({
+      type: 'cast', abilityId: 'frostbolt', targetId: 100,
+    });
+  });
+
+  it('attacks engaged dungeon targets but never starts an unrelated party pull', () => {
+    const settings = frostSettings();
+    settings.mode = 'party';
+    settings.targeting.enemyMode = 'closest-engaged';
+    settings.targeting.partyOnly = true;
+    const obs = observation(['frostbolt']);
+    const tank = partyMember();
+    obs.party = [obs.player, tank];
+    obs.partyRosterKey = '1,2';
+    obs.enemies[0]!.targetId = tank.id;
+    obs.currentTargetId = null;
+    obs.lastEnemyTargetId = null;
+    expect(decideFrost(obs, settings)).toMatchObject({
+      type: 'cast', abilityId: 'frostbolt', targetId: 100,
+    });
+
+    obs.enemies[0]!.inCombat = false;
+    expect(decideFrost(obs, settings)).toMatchObject({
+      type: 'wait', reason: 'No valid PvE enemy is selected or engaged in range.',
+    });
   });
 
   it('keeps attacking instead of resummoning a dead Water Elemental during combat', () => {

@@ -251,6 +251,7 @@ export function mountChronoPilotPanel(controller: ChronoPilotController): Mounte
   const percent = (value: number) => `${value}%`;
   frostField.append(
     checkbox('Auto-summon Water Elemental safely', controller.settings.frost.autoSummonWaterElemental, (value) => { controller.settings.frost.autoSummonWaterElemental = value; persist(); }),
+    checkbox('Smart Frostveil pre-shield', controller.settings.frost.smartFrostveilPreShield, (value) => { controller.settings.frost.smartFrostveilPreShield = value; persist(); }),
     checkbox('Smart Frost procs', controller.settings.frost.smartProcs, (value) => { controller.settings.frost.smartProcs = value; persist(); }),
     checkbox('Smart Glacial burst', controller.settings.frost.smartGlacialBurst, (value) => { controller.settings.frost.smartGlacialBurst = value; persist(); }),
     checkbox('Icy Veins on durable targets', controller.settings.frost.icyVeinsDurableOnly, (value) => { controller.settings.frost.icyVeinsDurableOnly = value; persist(); }),
@@ -258,6 +259,7 @@ export function mountChronoPilotPanel(controller: ChronoPilotController): Mounte
     range('Frozen Orb enemies', controller.settings.frost.frozenOrbEnemyCount, 2, 8, String, (value) => { controller.settings.frost.frozenOrbEnemyCount = value; persist(); }),
     range('Blizzard enemies', controller.settings.frost.blizzardEnemyCount, 2, 8, String, (value) => { controller.settings.frost.blizzardEnemyCount = value; persist(); }),
     range('Glacial Front enemies', controller.settings.frost.glacialFrontEnemyCount, 2, 8, String, (value) => { controller.settings.frost.glacialFrontEnemyCount = value; persist(); }),
+    checkbox('Glacial Front on durable single targets', controller.settings.frost.glacialFrontDurableTarget, (value) => { controller.settings.frost.glacialFrontDurableTarget = value; persist(); }),
     range('Conserve Frost mana', controller.settings.frost.conserveManaPct * 100, 0, 80, percent, (value) => { controller.settings.frost.conserveManaPct = value / 100; persist(); }),
     range('Stop Frost damage', controller.settings.frost.stopDamageManaPct * 100, 0, 50, percent, (value) => { controller.settings.frost.stopDamageManaPct = value / 100; persist(); }),
     range('Frost Aetherwell', controller.settings.frost.aetherwellManaPct * 100, 5, 80, percent, (value) => { controller.settings.frost.aetherwellManaPct = value / 100; persist(); }),

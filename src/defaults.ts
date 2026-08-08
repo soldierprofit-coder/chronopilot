@@ -1,7 +1,7 @@
 import type { AssistSettings } from './types.js';
 
 export const DEFAULT_SETTINGS: AssistSettings = {
-  settingsVersion: 13,
+  settingsVersion: 14,
   assistProfile: 'auto',
   mode: 'auto',
   modules: {
@@ -131,9 +131,11 @@ export const DEFAULT_SETTINGS: AssistSettings = {
   },
   frost: {
     autoSummonWaterElemental: true,
+    smartFrostveilPreShield: true,
     blizzardEnemyCount: 3,
     frozenOrbEnemyCount: 3,
     glacialFrontEnemyCount: 3,
+    glacialFrontDurableTarget: false,
     conserveManaPct: 0.25,
     stopDamageManaPct: 0.05,
     aetherwellManaPct: 0.3,
@@ -183,7 +185,7 @@ export const DEFAULT_SETTINGS: AssistSettings = {
     hourglassHpPct: 0.4,
   },
   safety: {
-    manualOverrideMs: 2000,
+    manualOverrideMs: 250,
     disableInPvp: false,
     buffOutOfCombat: true,
     decisionIntervalMs: 100,

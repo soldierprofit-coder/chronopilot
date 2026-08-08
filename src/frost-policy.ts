@@ -243,6 +243,16 @@ export function decideFrost(
   const enemy = selectedEnemy(observation, settings, contextMode);
   const durable = enemy ? durableTarget(observation, enemy, contextMode) : false;
   const conservingMana = currentMana < settings.frost.conserveManaPct;
+  const groupPullActive = observation.party.some(
+    (member) => member.id !== player.id && member.inCombat && !member.dead && member.connected,
+  );
+  const smartPreShieldPending =
+    settings.frost.smartFrostveilPreShield &&
+    settings.safety.buffOutOfCombat &&
+    !player.inCombat &&
+    currentMana > settings.frost.conserveManaPct &&
+    enemy !== null &&
+    (contextMode === 'solo' || durable || enemy.inCombat || groupPullActive);
 
   if (
     abilityReady(observation, settings, 'ice_block') &&
@@ -289,11 +299,11 @@ export function decideFrost(
     settings.modules.defensives &&
     abilityReady(observation, settings, 'ice_barrier') &&
     !frostveilActive &&
-    ((!player.inCombat && settings.safety.buffOutOfCombat) || playerHealth <= settings.frost.barrierHpPct)
+    (smartPreShieldPending || playerHealth <= settings.frost.barrierHpPct)
   ) {
     return cast('ice_barrier', 5, player.inCombat
       ? 'Restore Frostveil under pressure.'
-      : 'Prepare Frostveil before combat.');
+      : 'Prepare Frostveil for the selected or engaged pull.');
   }
 
   if (player.castingAbility || player.channeling || !gcdReady) {
@@ -354,7 +364,10 @@ export function decideFrost(
     cluster.aoeSafe &&
     frontalSafe &&
     distance(player, enemy) <= 16 &&
-    (durable || cluster.count >= settings.frost.glacialFrontEnemyCount);
+    (
+      cluster.count >= settings.frost.glacialFrontEnemyCount ||
+      (durable && settings.frost.glacialFrontDurableTarget)
+    );
 
   if (currentMana <= settings.frost.stopDamageManaPct) {
     return wait('Frost damage is paused at the configured emergency mana floor.');
