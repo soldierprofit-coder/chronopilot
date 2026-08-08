@@ -1,0 +1,12 @@
+node_modules/
+release/
+dist/
+dist-inject/
+.cache/
+.npm-cache/
+.electron-cache/
+.electron-builder-cache/
+*.zip
+*.log
+.DS_Store
+Thumbs.db

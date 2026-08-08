@@ -318,6 +318,7 @@ export function decideFrost(
     return cast('frost_armor', 7, 'Maintain Hoarfrost Mantle before combat.');
   }
   if (
+    settings.frost.autoSummonWaterElemental &&
     !player.inCombat &&
     !enemy &&
     !observation.frostPetActive &&

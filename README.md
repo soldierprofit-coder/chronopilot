@@ -48,6 +48,10 @@ Solo Questing does not move the character or chase enemies. It selects one legal
 
 The Windows-only ZIP puts `ChronoPilot Lazy Client.exe` directly in the extracted root. The separate source ZIP contains the editable project without the large Windows runtime. Keep every DLL and the `resources` folder beside the executable. This local build is unsigned, so Windows SmartScreen may show an Unknown Publisher warning.
 
+## Version 0.11.1
+
+Water Elemental upkeep is now an explicit Frost setting. When enabled, ChronoPilot may summon it only between pulls: the player must be out of combat, no valid enemy may remain, and Frost mana must be above the conservation threshold. A dead elemental is ignored throughout an active fight so finishing the target, interrupting, or using a defensive always wins. Turn the setting off for completely manual pet control.
+
 ## Version 0.11.0
 
 This release adds the separate **Frost PvE DPS** profile for World of ClaudeCraft `release/v0.36.0`. Auto mode reads the active talent specialization: Frost loads its own rotation and settings, while Chronomancy restores the existing healer and PvP engines without resetting either profile.

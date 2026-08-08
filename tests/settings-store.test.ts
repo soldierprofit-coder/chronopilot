@@ -18,10 +18,11 @@ describe('settings persistence', () => {
     expect(settings.abilities.collective_reversal).toBe(true);
     expect(settings.abilities.perfect_moment).toBe(false);
     expect(settings.thresholds.smartPerfectMoment).toBe(false);
-    expect(settings.settingsVersion).toBe(12);
+    expect(settings.settingsVersion).toBe(13);
     expect(settings.assistProfile).toBe('auto');
     expect(settings.frostAbilities.frostbolt).toBe(true);
     expect(settings.frost.smartProcs).toBe(true);
+    expect(settings.frost.autoSummonWaterElemental).toBe(true);
     expect('fire' in settings).toBe(false);
     expect(settings.safety.toggleHotkey).toBe('[');
     expect(settings.profiles.pvp.conserveManaPct).toBe(0);

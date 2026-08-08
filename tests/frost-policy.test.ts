@@ -204,6 +204,29 @@ describe('Frost PvE policy', () => {
     expect(decideFrost(obs, settings)).toMatchObject({ type: 'cast', abilityId: 'summon_water_elemental' });
   });
 
+  it('keeps attacking instead of resummoning a dead Water Elemental during combat', () => {
+    const settings = frostSettings();
+    const obs = observation(['summon_water_elemental', 'frostbolt']);
+    obs.frostPetActive = false;
+    expect(decideFrost(obs, settings)).toMatchObject({
+      type: 'cast', abilityId: 'frostbolt', targetId: 100,
+    });
+  });
+
+  it('allows completely manual Water Elemental upkeep', () => {
+    const settings = frostSettings();
+    settings.frost.autoSummonWaterElemental = false;
+    const obs = observation(['summon_water_elemental']);
+    obs.player.inCombat = false;
+    obs.enemies = [];
+    obs.currentTargetId = null;
+    obs.lastEnemyTargetId = null;
+    obs.frostPetActive = false;
+    expect(decideFrost(obs, settings)).toMatchObject({
+      type: 'wait', reason: 'No valid PvE enemy is selected or engaged in range.',
+    });
+  });
+
   it('holds damage at the Frost-specific emergency mana floor', () => {
     const settings = frostSettings();
     const obs = observation(['frostbolt']);

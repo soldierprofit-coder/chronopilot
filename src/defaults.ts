@@ -1,7 +1,7 @@
 import type { AssistSettings } from './types.js';
 
 export const DEFAULT_SETTINGS: AssistSettings = {
-  settingsVersion: 12,
+  settingsVersion: 13,
   assistProfile: 'auto',
   mode: 'auto',
   modules: {
@@ -130,6 +130,7 @@ export const DEFAULT_SETTINGS: AssistSettings = {
     },
   },
   frost: {
+    autoSummonWaterElemental: true,
     blizzardEnemyCount: 3,
     frozenOrbEnemyCount: 3,
     glacialFrontEnemyCount: 3,

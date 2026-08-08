@@ -94,6 +94,7 @@ export interface HealingProfile {
 }
 
 export interface FrostProfile {
+  autoSummonWaterElemental: boolean;
   blizzardEnemyCount: number;
   frozenOrbEnemyCount: number;
   glacialFrontEnemyCount: number;

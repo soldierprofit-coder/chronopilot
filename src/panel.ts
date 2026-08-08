@@ -250,6 +250,7 @@ export function mountChronoPilotPanel(controller: ChronoPilotController): Mounte
   frostField.innerHTML = '<legend>Frost PvE</legend>';
   const percent = (value: number) => `${value}%`;
   frostField.append(
+    checkbox('Auto-summon Water Elemental safely', controller.settings.frost.autoSummonWaterElemental, (value) => { controller.settings.frost.autoSummonWaterElemental = value; persist(); }),
     checkbox('Smart Frost procs', controller.settings.frost.smartProcs, (value) => { controller.settings.frost.smartProcs = value; persist(); }),
     checkbox('Smart Glacial burst', controller.settings.frost.smartGlacialBurst, (value) => { controller.settings.frost.smartGlacialBurst = value; persist(); }),
     checkbox('Icy Veins on durable targets', controller.settings.frost.icyVeinsDurableOnly, (value) => { controller.settings.frost.icyVeinsDurableOnly = value; persist(); }),
