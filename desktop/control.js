@@ -1,5 +1,6 @@
 const bridge = window.chronopilotDesktop;
 let latest = { ready: false };
+let launcher = { phase: 'detecting', exePath: '', message: 'Finding the official game…' };
 const pendingSettings = new Map();
 
 const HEALING_SKILLS = [
@@ -16,26 +17,31 @@ const HEALING_SKILLS = [
   ['perfect_moment', 'Perfect Moment'],
   ['counterspell', 'Counterspell'],
 ];
-const FROST_SKILLS = [
+const FIRE_SKILLS = [
   ['arcane_intellect', 'Aether Insight'],
   ['frost_armor', 'Hoarfrost Mantle'],
-  ['frostbolt', 'Rimelance'],
-  ['ice_lance', 'Ice Lance'],
-  ['flurry', 'Winterlash'],
-  ['frozen_orb', 'Frozen Orb'],
-  ['blizzard', 'Blizzard'],
-  ['glacial_spike', 'Glacial Spike'],
-  ['glacial_front', 'Glacial Front'],
-  ['ice_barrier', 'Frostveil'],
-  ['icy_veins', 'Icy Veins'],
-  ['summon_water_elemental', 'Water Elemental'],
-  ['cone_of_cold', 'Frostsweep'],
+  ['fireball', 'Cinderbolt'],
+  ['fire_blast', 'Cinderfall'],
+  ['scorch', 'Scald'],
+  ['pyroblast', 'Pyrelance'],
+  ['flamestrike', 'Flamestrike'],
+  ['combustion', 'Phoenix Trance'],
+  ['meteor', 'Meteor'],
+  ['dragons_breath', "Dragon's Breath"],
+  ['blazing_barrier', 'Blazing Barrier'],
   ['power_echo', 'Power Echo'],
+  ['overload', 'Overload'],
   ['presence_of_mind', 'Racing Mind'],
   ['rune_of_power', 'Rune of Power'],
+  ['ice_floes', 'Ice Floes'],
+  ['cold_snap', "Winter's Recall"],
+  ['greater_invisibility', 'Greater Invisibility'],
+  ['rings_of_frost', 'Ring of Frost'],
   ['counterspell', 'Spellbreak'],
   ['ice_block', 'Cold Coffin'],
-  ['evocation', 'Aetherwell / Evocation'],
+  ['blink', 'Flickerstep'],
+  ['polymorph', 'Bewitch'],
+  ['evocation', 'Aetherwell'],
   ['frost_nova', 'Icebind'],
 ];
 const PVP_SKILLS = [
@@ -71,7 +77,7 @@ function createSkillToggles(containerId, skills, settingsRoot = 'abilities') {
 createSkillToggles('healing-skills', HEALING_SKILLS);
 createSkillToggles('damage-skills', DAMAGE_SKILLS);
 createSkillToggles('pvp-skills', PVP_SKILLS);
-createSkillToggles('frost-skills', FROST_SKILLS, 'frostAbilities');
+createSkillToggles('fire-skills', FIRE_SKILLS, 'fireAbilities');
 
 function getPath(object, path) {
   return path.split('.').reduce((value, key) => value?.[key], object);
@@ -203,7 +209,9 @@ function decisionLabel(decision) {
   if (decision.type === 'cast') return `Cast ${decision.abilityId.replaceAll('_', ' ')}`;
   if (decision.type === 'cast-at') return `Place ${decision.abilityId.replaceAll('_', ' ')}`;
   if (decision.type === 'target') return `Target #${decision.targetId}`;
+  if (decision.type === 'start-attack') return `Auto-attack #${decision.targetId}`;
   if (decision.type === 'use-item') return `Use ${decision.itemId.replaceAll('_', ' ')}`;
+  if (decision.type === 'move') return 'Dodge AoE';
   return 'Hold';
 }
 
@@ -213,7 +221,13 @@ function render(snapshot) {
   const connection = document.getElementById('connection');
   const startStop = document.getElementById('start-stop');
   startStop.disabled = !ready;
-  connection.textContent = ready ? 'Connected to the game · settings saved locally' : 'Waiting for login and game world…';
+  connection.textContent = ready
+    ? 'Connected to the official game · 100 ms decisions'
+    : launcher.message || 'Waiting for the official game world…';
+  if (!ready) {
+    document.getElementById('decision-title').textContent = 'Waiting';
+    document.getElementById('decision-reason').textContent = launcher.message || 'Enter the game world to enable Assist.';
+  }
   if (!ready) return;
 
   for (const [path, value] of pendingSettings) {
@@ -224,7 +238,7 @@ function render(snapshot) {
   const active = latest.status.active;
   startStop.textContent = active ? 'STOP ASSIST' : 'START ASSIST';
   startStop.classList.toggle('stop', active);
-  const profile = latest.status.detectedProfile === 'frost-pve' ? 'FROST DPS' : 'CHRONO HEAL';
+  const profile = latest.status.detectedProfile === 'fire-dps' ? 'FIRE MAGE' : 'CHRONOMAGE';
   document.getElementById('detected-mode').textContent = `${profile} · ${latest.status.detectedMode.toUpperCase()}`;
   document.getElementById('decision-title').textContent = active ? decisionLabel(latest.status.decision) : 'Paused';
   document.getElementById('decision-reason').textContent = latest.status.decision?.reason || 'Ready.';
@@ -239,6 +253,25 @@ function render(snapshot) {
   }
 }
 
+function renderLauncher(state) {
+  launcher = state || launcher;
+  const card = document.querySelector('.launcher-card');
+  const badge = document.getElementById('launcher-badge');
+  const message = document.getElementById('launcher-message');
+  const pathInput = document.getElementById('game-exe-path');
+  const launchButton = document.getElementById('launch-game');
+  const browseButton = document.getElementById('browse-game');
+  card.dataset.phase = launcher.phase || 'detecting';
+  badge.textContent = String(launcher.phase || 'detecting').replace('-', ' ').toUpperCase();
+  message.textContent = launcher.message || '';
+  pathInput.value = launcher.exePath || '';
+  const busy = launcher.phase === 'detecting' || launcher.phase === 'launching' || launcher.phase === 'attaching';
+  launchButton.disabled = busy || !launcher.exePath || launcher.phase === 'attached';
+  launchButton.textContent = launcher.phase === 'attached' ? 'ATTACHED' : 'LAUNCH & ATTACH';
+  browseButton.disabled = busy;
+  render(latest);
+}
+
 let capturingHotkey = false;
 bindSettingsFields();
 document.getElementById('profile-editor').addEventListener('change', () => render(latest));
@@ -247,6 +280,8 @@ document.getElementById('start-stop').addEventListener('click', () => {
 });
 document.getElementById('pin').addEventListener('change', (event) => bridge.setPinned(event.target.checked));
 document.getElementById('hide').addEventListener('click', () => bridge.hide());
+document.getElementById('browse-game').addEventListener('click', () => { void bridge.browseGameExe(); });
+document.getElementById('launch-game').addEventListener('click', () => { void bridge.launchAndAttach(); });
 document.getElementById('hotkey-capture').addEventListener('click', (event) => {
   capturingHotkey = true;
   event.currentTarget.textContent = 'Press a key…';
@@ -276,4 +311,6 @@ for (const tab of document.querySelectorAll('.tab')) {
 }
 
 bridge.onSnapshot(render);
+bridge.onLauncherState(renderLauncher);
+void bridge.getLauncherState().then(renderLauncher);
 bridge.ready();

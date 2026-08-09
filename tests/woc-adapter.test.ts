@@ -47,20 +47,11 @@ function arenaWorld(): WocWorldLike {
 }
 
 describe('World of ClaudeCraft state adapter', () => {
-  it('mirrors the active talent specialization and living owned Frost pet', () => {
+  it('mirrors the active talent specialization and official auto-attack state', () => {
     const world = arenaWorld();
     world.arenaInfo = null;
-    world.talentSpec = 'frost';
-    const pet = {
-      ...world.player,
-      id: 3,
-      kind: 'pet',
-      name: 'Water Elemental',
-      ownerId: 1,
-      hostile: false,
-      targetId: null,
-    };
-    world.entities.set(3, pet);
+    world.talentSpec = 'fire';
+    world.player.autoAttack = true;
     const observation = observeWocWorld(
       world,
       copyDefaultSettings(),
@@ -72,8 +63,30 @@ describe('World of ClaudeCraft state adapter', () => {
       },
       0,
     );
-    expect(observation.talentSpec).toBe('frost');
-    expect(observation.frostPetActive).toBe(true);
+    expect(observation.talentSpec).toBe('fire');
+    expect(observation.player.autoAttacking).toBe(true);
+  });
+
+  it('copies only nearby actionable enemies', () => {
+    const world = arenaWorld();
+    world.arenaInfo = null;
+    world.player.targetId = null;
+    const near = { ...world.player, id: 20, kind: 'mob', hostile: true, pos: { x: 20, z: 0 } };
+    const far = { ...world.player, id: 21, kind: 'mob', hostile: true, pos: { x: 100, z: 0 } };
+    world.entities.set(20, near);
+    world.entities.set(21, far);
+    const observation = observeWocWorld(
+      world,
+      copyDefaultSettings(),
+      {
+        individualEchoTargetId: null,
+        individualEchoExpiresAt: 0,
+        aetherInsightRosterKey: null,
+        lastEnemyTargetId: null,
+      },
+      0,
+    );
+    expect(observation.enemies.map((enemy) => enemy.id)).toEqual([20]);
   });
 
   it('does not treat ordinary arena and Vale Cup status objects as active PvP', () => {

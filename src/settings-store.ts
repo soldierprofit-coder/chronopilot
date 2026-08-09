@@ -24,7 +24,7 @@ function mergeSettings(saved: Partial<AssistSettings>): AssistSettings {
   const pvpEnabled = saved.pvp?.enabled ?? (saved.safety?.disableInPvp === false ? true : defaults.pvp.enabled);
   const savedAssistProfile = saved.assistProfile as string | undefined;
   const assistProfile: AssistProfile =
-    savedAssistProfile === 'chronomancy-healer' || savedAssistProfile === 'frost-pve'
+    savedAssistProfile === 'chronomancy-healer' || savedAssistProfile === 'fire-dps'
       ? savedAssistProfile
       : 'auto';
   return {
@@ -42,7 +42,7 @@ function mergeSettings(saved: Partial<AssistSettings>): AssistSettings {
         ? false
         : (saved.abilities?.perfect_moment ?? defaults.abilities.perfect_moment),
     },
-    frostAbilities: { ...defaults.frostAbilities, ...saved.frostAbilities },
+    fireAbilities: { ...defaults.fireAbilities, ...saved.fireAbilities },
     profiles: {
       solo: { ...defaults.profiles.solo, ...saved.profiles?.solo },
       party: { ...defaults.profiles.party, ...saved.profiles?.party },
@@ -61,7 +61,7 @@ function mergeSettings(saved: Partial<AssistSettings>): AssistSettings {
           : {}),
       },
     },
-    frost: { ...defaults.frost, ...saved.frost },
+    fire: { ...defaults.fire, ...saved.fire },
     thresholds: {
       ...defaults.thresholds,
       ...saved.thresholds,

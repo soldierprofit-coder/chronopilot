@@ -1,94 +1,103 @@
 # ChronoPilot
 
-ChronoPilot is an authorized, semi-assisted Mage controller for a separately built World of ClaudeCraft desktop client. It auto-detects Chronomancy for healing or Cryomancy/Frost for PvE damage and keeps each profile's settings independent.
+ChronoPilot is an authorized, semi-assisted Mage controller that launches and attaches to the installed official World of ClaudeCraft Windows client. Version 0.14.0 auto-detects **Chronomancy healing** or **Pyromancy/Fire damage** and keeps their settings independent.
 
-The player moves, positions, faces, and handles mechanics manually. ChronoPilot can choose legal targets and cast enabled healing, defensive, interrupt, resurrection, and Chronomancy damage-to-heal abilities through the existing server-authoritative client commands.
+The player remains responsible for ordinary movement, facing, positioning, food, and drinking. When **Dodge AoE** is enabled, ChronoPilot can temporarily own movement for supported Rift boss danger zones, then releases movement and resumes combat. ChronoPilot acts through the game's existing server-authoritative input, target, and ability commands. It never asks for a password, changes the installed game, loads a DLL, or sends action-bar macros.
 
-## Current milestone
+## Version 0.14.0
 
-- Auto-detected Chronomancy healer and Frost PvE DPS engines, with manual profile override
-- Independent Frost skills, mana limits, defensives, cooldowns, proc logic, and AoE thresholds; healer sliders are ignored while Frost is active
-- Frost single-target loop: Rimelance generation, Fingers of Frost anti-overcap, instant Brain Freeze Winterlash, Winter's Chill Ice Lances, and five-Icicle Glacial Spike bursts
-- Frost pack loop: Frozen Orb, densest-cluster Blizzard placement, Icebind setup, Frostsweep, and automatic full-stage Glacial Front
-- Frost upkeep for Aether Insight, Hoarfrost Mantle, Frostveil, Water Elemental, Spellbreak, Cold Coffin, potions, and safe between-pull Aetherwell
-- Durable-target logic for Rune of Power, Icy Veins, Frozen Orb, Power Echo, and Racing Mind when those talents are learned; Glacial Front remains pack-first unless its optional durable-target setting is enabled
-- AoE refuses to fire into protected breakable crowd control
-- MMOminion-style detachable Start/Stop control window
-- Official browser-login handoff; no ChronoPilot password field or credential storage
-- Starts over the game, drags freely to another monitor, pins on top, and hides/restores with F10
-- Performance-oriented Electron GPU flags and unthrottled game rendering
-- Auto-detected Solo Questing, Party, Raid, and PvP / Arena profiles, with manual overrides
-- Module and per-ability toggles
-- Separate healing, group ally-count, and mana thresholds for every profile
-- Tank, assisted-party-member, current, lowest-HP, closest-engaged, and closest-in-range enemy modes
-- Configurable target range and optional new-enemy selection for questing
-- Automatic healing priority over single-target or nearby-pack damage
-- Ally-first party and raid healing, with self-healing promoted for emergencies
-- No-tank fallback using the current aggro holder, a melee/frontline member, the party leader, then self
-- Aether Insight upkeep before combat and after a party-roster change
-- Temporal Echo only when combat is pending; the tank-lock mode refreshes below one second, while turning the lock off moves Echo immediately between a safe tank and genuinely endangered allies
-- Smart Power Echo reserved for an emergency Temporal Mend repeat
-- Perfect Moment is off by default; its optional smart logic remains available for safe Echo/Cascade damage-healing windows
-- Natural stream targeting, enabled by default: the real selector stays on the latest healed ally and moves to an enemy only when ChronoPilot attacks
-- Explicit Nythraxis transition pause with no casts or cosmetic target switching during the scene
-- Smart one-to-four-stack Aether Surge spending, with separate aggressive PvP limits and conservative PvE limits
-- Zero-percent mana reserve settings for fully unrestricted damage or healing
-- Optional automatic health and mana potions, with drinking kept manual
-- Interrupted or refused casts remain active and retry when the character is ready
-- The Resurrection module is the authoritative master switch; PvP always skips both resurrection spells
-- Manual-input pause and emergency stop
-- Bindable Start/Stop hotkey, defaulting to `[` for quick in-game control
-- PvP mode uses smart Ice Block, root-breaking Blink, Icebind melee relief, secondary-target Bewitch, protective Hourglass, Spellbreak, stable-window Temporal Acceleration, barriers, healing, and damage-to-heal
-- PvP auto-detection supports real duels, arenas, Vale Cup, and Thornhollow Fields 5v5 matches
-- Thornhollow targeting promotes only the opposing roster and its owned pets; teammates and nearby ordinary players remain excluded
-- Local settings persistence
-- Tests for healing priorities, quest targeting, party-member assist, mana conservation, nearby-pack damage, casting safety, control, and PvP
+The interface presents exactly two specialization profiles: **Chronomage** and **Fire Mage**. **Auto-detect** only chooses between those profiles from the learned specialization; it is not a third profile. The old Frost PvE tab and wording are retired.
 
-Solo Questing does not move the character or chase enemies. It selects one legal enemy inside the configured range when `Attack new enemies` is enabled. Party and Raid modes never start a new fight. Frost can place Blizzard at a legal position and starts Glacial Front's server-authoritative full charge, but the player still controls facing, movement, mechanics, and early release. PvP mode can move exactly once with Blink when `Blink out of roots` is enabled; no other movement is automated.
+The portable Windows runtime is built into a fresh output directory and validated against the complete Electron executable size, preventing the truncated executable that affected the withdrawn 0.13.1 archive.
 
-The Windows-only ZIP puts `ChronoPilot Lazy Client.exe` directly in the extracted root. The separate source ZIP contains the editable project without the large Windows runtime. Keep every DLL and the `resources` folder beside the executable. This local build is unsigned, so Windows SmartScreen may show an Unknown Publisher warning.
+- Adds one **Dodge AoE** switch to Overview, enabled by default.
+- Reads the official Rift death-zone mirror instead of scanning screen colors.
+- Pauses all combat decisions, faces and walks through the nearest safe exit, avoids other live circles, then resumes the existing target and rotation.
+- Keeps AoE movement authoritative while the feature is enabled; ordinary movement keys do not cancel the escape. Turn the switch off or stop Assist for full manual mechanic control.
+- Uses Flickerstep automatically only when the remaining fuse is shorter than the calculated walking escape or the Mage is rooted, and only when the landing point is safe.
+- Replaces the selectable Frost PvE profile with separate Fire PvE and Fire PvP logic.
+- Preserves the complete Chronomancy Solo, Party, Raid, and PvP healer engine.
+- Auto mode reads the active Mage specialization. Pyromancy loads Fire settings; Chronomancy loads healer settings.
+- Migrates an old forced Frost profile back to Auto without resetting saved Chronomancy settings.
+- Maintains Aether Insight and Hoarfrost Mantle before combat.
+- Uses the official Fire opener: Rune of Power, Phoenix Trance, Cinderfall charges, then Hot Streak Pyrelance.
+- Uses Cinderfall off the global cooldown and while another Fire spell is being cast.
+- Never hard-casts the six-second Pyrelance as the normal filler. Hot Streak or Racing Mind makes it instant; Cinderbolt is the normal stationary filler and Scald is the moving or conservative filler.
+- Uses Meteor on durable single targets or configured packs. Flamestrike spends Hot Streak on clustered packs.
+- Uses full-stage Dragon's Breath only at the configured enemy count. The game server performs the maximum-stage release; the player still has to face the pack.
+- Protects breakable crowd control from automatic AoE.
+- Fire PvP uses manual targets first, then valid duel, arena, Vale Cup, or Thornhollow opponents.
+- Fire PvP can arm the Mage's 30-yard wand auto-attack while moving. Auto-attacks still require range, facing, and line of sight, pause during spell casts, and resume when the target becomes visible again.
+- Fire PvP includes smart Phoenix Trance burst, Hot Streak spending, Cinderfall, Meteor, Scald movement pressure, Spellbreak, Ice Block, root-breaking Flickerstep, Icebind, Bewitch, and optional Ring of Frost.
+- Fire PvP never runs resurrection logic.
+- Keeps the bindable Start/Stop hotkey, defaulting to `[`, plus the detachable second-monitor controller and F10 hide/show.
+- Keeps natural stream targeting: the real in-game selector follows the ally or enemy being acted on.
+- Uses 100 ms combat decisions and 250 ms visible controller updates without running a second copy of the game renderer.
 
-## Version 0.11.2
+The combat profiles remain aligned with World of ClaudeCraft `release/v0.36.0` at commit `5819c005a7666f161aee8c0b54d9007c865bb494`. Rift death-zone and controller-movement compatibility was checked against current game source commit `7e8c2c3cd8136242a2d8ff29c376dd2bef66f849`.
 
-Frostveil no longer fires simply because Assist is idle. Smart pre-shielding now prepares it for a selected solo target, an engaged party pull, or a durable group target while preserving the existing in-combat HP rescue threshold. Glacial Front stays automatic for configured packs, but durable single-target use is now a separate option and defaults off so Rimelance remains the normal single-target builder. Frost's Skills page now exposes Aetherwell and Icebind, the stream-friendly manual override defaults to 250 ms, and natural stream targeting remains enabled. Regression coverage confirms legal solo acquisition for Rift/Delve-style content and engaged-only targeting for Dungeons and Raids.
+## Fire behavior
 
-## Version 0.11.1
+### Single target
 
-Water Elemental upkeep is now an explicit Frost setting. When enabled, ChronoPilot may summon it only between pulls: the player must be out of combat, no valid enemy may remain, and Frost mana must be above the conservation threshold. A dead elemental is ignored throughout an active fight so finishing the target, interrupting, or using a defensive always wins. Turn the setting off for completely manual pet control.
+1. Rune of Power before the burst window when learned.
+2. Phoenix Trance on a durable target, or in PvP when Fire Burst is enabled.
+3. Cinderfall charges to generate Hot Streak without delaying the main cast.
+4. Instant Pyrelance on Hot Streak.
+5. Meteor on a durable target when enabled.
+6. Cinderbolt while stationary; Scald while moving, during execute, or under mana conservation.
 
-## Version 0.11.0
+### Packs
 
-This release adds the separate **Frost PvE DPS** profile for World of ClaudeCraft `release/v0.36.0`. Auto mode reads the active talent specialization: Frost loads its own rotation and settings, while Chronomancy restores the existing healer and PvP engines without resetting either profile.
+- Flamestrike replaces Pyrelance at the configured clustered-enemy count.
+- Meteor targets the densest safe cluster.
+- Dragon's Breath is reserved for the configured nearby-enemy count.
+- No automatic AoE is used when it would break protected crowd control.
 
-Frost handles the current proc and resource contract: Fingers of Frost is spent before it can overcap, Brain Freeze is converted into instant Winterlash, Winter's Chill is consumed with Ice Lance, and five Icicles trigger a Glacial Spike burst. Safe packs use Frozen Orb before Blizzard, then Icebind and a fully charged Glacial Front when configured. The server automatically releases Glacial Front at stage IV; ChronoPilot never moves or turns the character to aim it.
+### PvP auto-attack
 
-## Version 0.10.2
+The assist sends the normal game `attack` command once to arm the Mage wand. This helps preserve pressure while running, but it cannot shoot through walls or obstacles and it does not turn, chase, or navigate the character.
 
-This maintenance release fixes desktop Skills settings whose internal ability IDs contain underscores. Changes to Temporal Reversal, Collective Reversal, Temporal Echo, Aether Darts, and the other affected abilities now pass validation, save immediately, and remain stable across tab changes and restarts. Linked Resurrection controls also repaint together immediately instead of briefly showing conflicting states. The recovery skill is now labeled **Aetherwell / Evocation** so it matches both the in-game and internal names.
+## Suggested talents
 
-## Version 0.10.1
+### Fire PvE
 
-PvP now has separate Smart Surge limits of one to four charges. Its default preset spends aggressively without a mana reserve, reaches four charges while health is stable, and drops toward one charge when healing pressure rises. Cold Coffin now defaults to 45% HP, Hourglass to 40%, Temporal Barrier to 88%, and the emergency-heal threshold to 52% so burst protection starts before the old near-death window.
+- Ice Floes
+- Warded
+- Twin Icebind
+- Racing Mind
+- Winter's Recall
+- Rune of Power
 
-The Resurrection module is now the authoritative saved switch. Old Temporal Reversal or Collective Reversal values can no longer re-enable it after a restart or tab change, and both resurrection spells are unconditionally skipped in PvP because battleground and arena deaths return from the base.
+### Fire PvP starting point
 
-## Version 0.10.0
+- Ice Floes for manual casting movement, or Double Blink for extra escape
+- Warded
+- Twin Icebind, with Snap Bewitch as an alternative control choice
+- Power Echo for a direct burst repeat
+- Winter's Recall
+- Overflowing Power
 
-This release returns ChronoPilot to one Chronomancy-only engine. Fire and Frost profile selection, settings, skills, code paths, and UI are removed. The stable adaptive Echo, healing, mana, resurrection, PvP utility, stream-targeting, and Solo/Party/Raid behavior remain intact.
+ChronoPilot checks which optional abilities are actually learned, so an unavailable talent is skipped rather than blocking the rotation.
 
-Thornhollow Fields uses the authoritative active battleground roster to identify only the opposing 5v5 team and their pets. A valid opponent you select manually wins immediately; otherwise ChronoPilot can acquire the nearest visible roster-confirmed enemy even before that opponent attacks. The assist still never navigates or chases.
+## Chronomancy behavior retained
 
-## Version 0.7.4
+- Separate Solo, Party, Raid, and PvP presets with manual context override.
+- Lowest-effective-HP healing, ally-first party and raid priority, self-emergency protection, and no-tank fallback.
+- Temporal Echo tank lock or adaptive rescue mode.
+- Smart Power Echo before an emergency Temporal Mend.
+- Temporal Barrier, Mass Barrier, Cascade, Rewind, Hourglass, interrupts, potions, and optional resurrection in PvE.
+- Smart one-to-four Aether Surge stacks with separate PvE and PvP limits.
+- PvP skips both resurrection spells unconditionally.
+- Perfect Moment remains optional and off by default.
 
-The **Keep Echo on tank** control now selects two complete behaviors. On locks the individual Echo to the assigned tank and retains the one-second mana-preserving refresh. Off enables adaptive rescue: when the tank is at least 85% effective HP, Echo can move immediately to an endangered ally without waiting for expiry, stays stable instead of following every small HP change, and returns to the tank when the rescue target recovers or the tank becomes unsafe.
+## Official-client launcher
 
-## Version 0.7.3
+ChronoPilot finds or browses to `World of ClaudeCraft.exe`, launches the installed self-updating client with a random loopback-only DevTools port, and attaches the decision engine to that official renderer. The official client continues to own updates, login callbacks, saved sessions, GPU selection, and rendering.
 
-This build prevents redundant Temporal Echo casts. Manual spell or target input no longer erases the confirmed individual Echo timer, party snapshots without a source ID may confirm only the already remembered target, and the assigned tank's Echo refreshes only below one second remaining. Existing saved three-second refresh settings migrate automatically. Manual override remains 250 ms at its lowest desktop setting.
+The attachment does not patch `app.asar`, modify installed files, inject a DLL, store credentials, or send action-bar keys. If the official client is already running, close it completely before **Launch & Attach** so Electron accepts the launch-only attach flag. Renderer reloads reattach automatically; after a full updater restart, use **Launch & Attach** again.
 
-## Version 0.7.1
-
-This build makes Resurrection one atomic setting: Temporal Reversal, Collective Reversal, and the module are enabled or disabled together and legacy split settings are repaired when loaded. It also adds an auto-detected PvP / Arena profile. Cold Coffin is reserved for critical health or a controlled emergency, Flickerstep only breaks roots, Icebind relieves nearby melee pressure, Bewitch controls a secondary opponent while an ally is pressured, Hourglass protects and heals a critical ally or self, Spellbreak interrupts active casts, and Temporal Acceleration waits for a stable fight. Healing, barriers, Rewind, potions, and the Arcane damage-to-heal rotation remain active. Perfect Moment is migrated off by default but can still be enabled manually. Natural stream targeting shows every direct ally or control target and returns to a valid enemy only when an offensive action needs it. Version 0.7.1 fixes PvP targeting: active duel and arena opponents are promoted to valid enemies even though the game wire marks player entities as `hostile: false`.
+ChronoPilot does not navigate or chase. Outside supported Rift danger zones, movement remains manual. During a verified AoE escape it uses the game's controller movement/facing channel and optionally Flickerstep, then releases that channel immediately on safety, Assist stop, or setting disable.
 
 ## Development
 

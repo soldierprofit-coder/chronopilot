@@ -6,7 +6,7 @@ describe('desktop setting path validation', () => {
     expect(isSafeSettingPath('abilities.temporal_reversal')).toBe(true);
     expect(isSafeSettingPath('abilities.collective_reversal')).toBe(true);
     expect(isSafeSettingPath('abilities.arcane_missiles')).toBe(true);
-    expect(isSafeSettingPath('frostAbilities.glacial_front')).toBe(true);
+    expect(isSafeSettingPath('fireAbilities.pyroblast')).toBe(true);
     expect(isSafeSettingPath('frost.smartGlacialBurst')).toBe(true);
   });
 

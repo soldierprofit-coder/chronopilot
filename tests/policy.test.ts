@@ -37,6 +37,7 @@ function observation(): CombatObservation {
       castingAbility: null,
       channeling: false,
       cooldowns: {},
+      autoAttacking: false,
     },
     party: [player, tank, unit(3, 'dps'), unit(4, 'dps'), unit(5, 'dps')],
     enemies: [

@@ -4,26 +4,26 @@ import type {
   AbilityId,
   CombatContextMode,
   ControllerStatus,
-  FrostAbilityId,
+  FireAbilityId,
   ModuleKey,
 } from './types.js';
 
 const STYLE_ID = 'chronopilot-style';
 
-const FROST_ABILITIES: Array<[FrostAbilityId, string]> = [
+const FIRE_ABILITIES: Array<[FireAbilityId, string]> = [
   ['arcane_intellect', 'Aether Insight'],
   ['frost_armor', 'Hoarfrost Mantle'],
-  ['frostbolt', 'Rimelance'],
-  ['ice_lance', 'Ice Lance'],
-  ['flurry', 'Winterlash'],
-  ['frozen_orb', 'Frozen Orb'],
-  ['blizzard', 'Blizzard'],
-  ['glacial_spike', 'Glacial Spike'],
-  ['glacial_front', 'Glacial Front'],
-  ['ice_barrier', 'Frostveil'],
-  ['icy_veins', 'Icy Veins'],
-  ['summon_water_elemental', 'Water Elemental'],
-  ['cone_of_cold', 'Frostsweep'],
+  ['fireball', 'Cinderbolt'],
+  ['fire_blast', 'Cinderfall'],
+  ['scorch', 'Scald'],
+  ['pyroblast', 'Pyrelance'],
+  ['flamestrike', 'Flamestrike'],
+  ['combustion', 'Phoenix Trance'],
+  ['meteor', 'Meteor'],
+  ['dragons_breath', "Dragon's Breath"],
+  ['blazing_barrier', 'Blazing Barrier'],
+  ['power_echo', 'Power Echo'],
+  ['overload', 'Overload'],
   ['presence_of_mind', 'Racing Mind'],
   ['rune_of_power', 'Rune of Power'],
   ['counterspell', 'Spellbreak'],
@@ -63,11 +63,11 @@ const CHRONO_ABILITIES: Array<[AbilityId, string]> = [
 
 const ABILITY_LABELS = new Map<AbilityId, string>([
   ...CHRONO_ABILITIES,
-  ...FROST_ABILITIES,
+  ...FIRE_ABILITIES,
 ]);
 
 const MODULES: Array<[ModuleKey, string]> = [
-  ['healing', 'Healing'],
+  ['healing', 'Chronomage'],
   ['damageToHeal', 'Damage to heal'],
   ['defensives', 'Defensives'],
   ['interrupts', 'Interrupts'],
@@ -179,14 +179,14 @@ export function mountChronoPilotPanel(controller: ChronoPilotController): Mounte
   const sections: Array<[string, string, HTMLElement]> = [];
   const overview = document.createElement('div');
   const rotationField = document.createElement('fieldset');
-  rotationField.innerHTML = '<legend>Rotation</legend>';
+  rotationField.innerHTML = '<legend>Mage specialization</legend>';
   const rotationRow = document.createElement('label');
-  rotationRow.innerHTML = '<span>Combat profile</span>';
+  rotationRow.innerHTML = '<span>Specialization</span>';
   const rotationSelect = document.createElement('select');
   for (const [value, label] of [
-    ['auto', 'Auto-detect talents'],
-    ['chronomancy-healer', 'Chronomancy healer'],
-    ['frost-pve', 'Frost PvE DPS'],
+    ['auto', 'Auto-detect (recommended)'],
+    ['chronomancy-healer', 'Chronomage'],
+    ['fire-dps', 'Fire Mage'],
   ] as const) {
     const option = document.createElement('option');
     option.value = value;
@@ -201,7 +201,7 @@ export function mountChronoPilotPanel(controller: ChronoPilotController): Mounte
   rotationRow.append(rotationSelect);
   const rotationNote = document.createElement('p');
   rotationNote.className = 'cp-small';
-  rotationNote.textContent = 'Frost has independent PvE DPS rules and ignores the saved Chronomancy healing thresholds.';
+  rotationNote.textContent = 'Fire has independent PvE and PvP DPS rules and ignores the saved Chronomancy healing thresholds.';
   rotationField.append(rotationRow, rotationNote);
   const profileField = document.createElement('fieldset');
   profileField.innerHTML = '<legend>Group context</legend>';
@@ -242,36 +242,46 @@ export function mountChronoPilotPanel(controller: ChronoPilotController): Mounte
       persist();
     }));
   }
-  overview.append(rotationField, profileField, moduleField);
+  const mechanicField = document.createElement('fieldset');
+  mechanicField.innerHTML = '<legend>Mechanics</legend>';
+  mechanicField.append(
+    checkbox('Dodge AoE (emergency Flickerstep)', controller.settings.safety.dodgeAoe, (value) => {
+      controller.settings.safety.dodgeAoe = value;
+      persist();
+    }),
+  );
+  const mechanicNote = document.createElement('p');
+  mechanicNote.className = 'cp-small';
+  mechanicNote.textContent = 'Supported danger zones override combat until you reach safety.';
+  mechanicField.append(mechanicNote);
+  overview.append(rotationField, profileField, moduleField, mechanicField);
   sections.push(['overview', 'Overview', overview]);
 
-  const frost = document.createElement('div');
-  const frostField = document.createElement('fieldset');
-  frostField.innerHTML = '<legend>Frost PvE</legend>';
+  const fire = document.createElement('div');
+  const fireField = document.createElement('fieldset');
+  fireField.innerHTML = '<legend>Fire Mage</legend>';
   const percent = (value: number) => `${value}%`;
-  frostField.append(
-    checkbox('Auto-summon Water Elemental safely', controller.settings.frost.autoSummonWaterElemental, (value) => { controller.settings.frost.autoSummonWaterElemental = value; persist(); }),
-    checkbox('Smart Frostveil pre-shield', controller.settings.frost.smartFrostveilPreShield, (value) => { controller.settings.frost.smartFrostveilPreShield = value; persist(); }),
-    checkbox('Smart Frost procs', controller.settings.frost.smartProcs, (value) => { controller.settings.frost.smartProcs = value; persist(); }),
-    checkbox('Smart Glacial burst', controller.settings.frost.smartGlacialBurst, (value) => { controller.settings.frost.smartGlacialBurst = value; persist(); }),
-    checkbox('Icy Veins on durable targets', controller.settings.frost.icyVeinsDurableOnly, (value) => { controller.settings.frost.icyVeinsDurableOnly = value; persist(); }),
-    checkbox('Icebind PvE packs', controller.settings.frost.useIcebindPve, (value) => { controller.settings.frost.useIcebindPve = value; persist(); }),
-    range('Frozen Orb enemies', controller.settings.frost.frozenOrbEnemyCount, 2, 8, String, (value) => { controller.settings.frost.frozenOrbEnemyCount = value; persist(); }),
-    range('Blizzard enemies', controller.settings.frost.blizzardEnemyCount, 2, 8, String, (value) => { controller.settings.frost.blizzardEnemyCount = value; persist(); }),
-    range('Glacial Front enemies', controller.settings.frost.glacialFrontEnemyCount, 2, 8, String, (value) => { controller.settings.frost.glacialFrontEnemyCount = value; persist(); }),
-    checkbox('Glacial Front on durable single targets', controller.settings.frost.glacialFrontDurableTarget, (value) => { controller.settings.frost.glacialFrontDurableTarget = value; persist(); }),
-    range('Conserve Frost mana', controller.settings.frost.conserveManaPct * 100, 0, 80, percent, (value) => { controller.settings.frost.conserveManaPct = value / 100; persist(); }),
-    range('Stop Frost damage', controller.settings.frost.stopDamageManaPct * 100, 0, 50, percent, (value) => { controller.settings.frost.stopDamageManaPct = value / 100; persist(); }),
-    range('Frost Aetherwell', controller.settings.frost.aetherwellManaPct * 100, 5, 80, percent, (value) => { controller.settings.frost.aetherwellManaPct = value / 100; persist(); }),
-    range('Frostveil below', controller.settings.frost.barrierHpPct * 100, 20, 100, percent, (value) => { controller.settings.frost.barrierHpPct = value / 100; persist(); }),
-    range('Cold Coffin below', controller.settings.frost.iceBlockHpPct * 100, 10, 60, percent, (value) => { controller.settings.frost.iceBlockHpPct = value / 100; persist(); }),
+  fireField.append(
+    checkbox('Smart Fire burst', controller.settings.fire.smartBurst, (value) => { controller.settings.fire.smartBurst = value; persist(); }),
+    checkbox('Smart Blazing Barrier pre-shield', controller.settings.fire.smartPreShield, (value) => { controller.settings.fire.smartPreShield = value; persist(); }),
+    checkbox('Phoenix Trance on durable targets', controller.settings.fire.phoenixTranceDurableOnly, (value) => { controller.settings.fire.phoenixTranceDurableOnly = value; persist(); }),
+    checkbox('Meteor on durable single targets', controller.settings.fire.useMeteorSingleTarget, (value) => { controller.settings.fire.useMeteorSingleTarget = value; persist(); }),
+    checkbox("Dragon's Breath in PvE packs", controller.settings.fire.useDragonsBreathPve, (value) => { controller.settings.fire.useDragonsBreathPve = value; persist(); }),
+    range('Flamestrike enemies', controller.settings.fire.flamestrikeEnemyCount, 2, 8, String, (value) => { controller.settings.fire.flamestrikeEnemyCount = value; persist(); }),
+    range('Meteor enemies', controller.settings.fire.meteorEnemyCount, 2, 8, String, (value) => { controller.settings.fire.meteorEnemyCount = value; persist(); }),
+    range("Dragon's Breath enemies", controller.settings.fire.dragonsBreathEnemyCount, 2, 8, String, (value) => { controller.settings.fire.dragonsBreathEnemyCount = value; persist(); }),
+    range('Conserve Fire mana', controller.settings.fire.conserveManaPct * 100, 0, 80, percent, (value) => { controller.settings.fire.conserveManaPct = value / 100; persist(); }),
+    range('Stop Fire damage', controller.settings.fire.stopDamageManaPct * 100, 0, 50, percent, (value) => { controller.settings.fire.stopDamageManaPct = value / 100; persist(); }),
+    range('Fire Aetherwell', controller.settings.fire.aetherwellManaPct * 100, 5, 80, percent, (value) => { controller.settings.fire.aetherwellManaPct = value / 100; persist(); }),
+    range('Blazing Barrier below', controller.settings.fire.barrierHpPct * 100, 20, 100, percent, (value) => { controller.settings.fire.barrierHpPct = value / 100; persist(); }),
+    range('Cold Coffin below', controller.settings.fire.iceBlockHpPct * 100, 10, 60, percent, (value) => { controller.settings.fire.iceBlockHpPct = value / 100; persist(); }),
   );
-  const frostNote = document.createElement('p');
-  frostNote.className = 'cp-small';
-  frostNote.textContent = 'Blizzard is placed at the densest safe cluster. Glacial Front is held to its automatic full release; movement and facing remain manual.';
-  frostField.append(frostNote);
-  frost.append(frostField);
-  sections.push(['frost', 'Frost PvE', frost]);
+  const fireNote = document.createElement('p');
+  fireNote.className = 'cp-small';
+  fireNote.textContent = "Hot Streak spends on Pyrelance or clustered Flamestrike. Dragon's Breath auto-releases at stage IV; ordinary movement and facing remain manual outside supported AoE escapes.";
+  fireField.append(fireNote);
+  fire.append(fireField);
+  sections.push(['fire', 'Fire Mage', fire]);
 
   const healing = document.createElement('div');
   const editorField = document.createElement('fieldset');
@@ -342,25 +352,25 @@ export function mountChronoPilotPanel(controller: ChronoPilotController): Mounte
   potionNote.textContent = 'The highest available potion tier is used. Health and mana potions share one cooldown, so critical health wins. Food and drinking stay manual out of combat.';
   potionField.append(potionNote);
   healing.append(potionField);
-  sections.push(['healing', 'Healing', healing]);
+  sections.push(['healing', 'Chronomage', healing]);
 
   const skills = document.createElement('div');
   const skillField = document.createElement('fieldset');
   skillField.innerHTML = '<legend>Chronomancy abilities</legend>';
   const skillGrid = document.createElement('div');
   skillGrid.className = 'cp-grid';
-  const frostSkillField = document.createElement('fieldset');
-  frostSkillField.innerHTML = '<legend>Frost PvE abilities</legend>';
-  const frostSkillGrid = document.createElement('div');
-  frostSkillGrid.className = 'cp-grid';
-  for (const [id, label] of FROST_ABILITIES) {
-    frostSkillGrid.append(checkbox(label, controller.settings.frostAbilities[id], (value) => {
-      controller.settings.frostAbilities[id] = value;
+  const fireSkillField = document.createElement('fieldset');
+  fireSkillField.innerHTML = '<legend>Fire abilities</legend>';
+  const fireSkillGrid = document.createElement('div');
+  fireSkillGrid.className = 'cp-grid';
+  for (const [id, label] of FIRE_ABILITIES) {
+    fireSkillGrid.append(checkbox(label, controller.settings.fireAbilities[id], (value) => {
+      controller.settings.fireAbilities[id] = value;
       persist();
     }));
   }
-  frostSkillField.append(frostSkillGrid);
-  skills.append(frostSkillField);
+  fireSkillField.append(fireSkillGrid);
+  skills.append(fireSkillField);
 
   for (const [id, label] of CHRONO_ABILITIES) {
     skillGrid.append(checkbox(label, controller.settings.abilities[id], (value) => {
@@ -506,7 +516,7 @@ export function mountChronoPilotPanel(controller: ChronoPilotController): Mounte
   const update = (status: ControllerStatus): void => {
     root.dataset.active = String(status.active);
     const modeLabel = CONTEXTS.find(([mode]) => mode === status.detectedMode)?.[1] ?? status.detectedMode;
-    const profileLabel = status.detectedProfile === 'frost-pve' ? 'Frost DPS' : 'Chrono Heal';
+    const profileLabel = status.detectedProfile === 'fire-dps' ? 'Fire Mage' : 'Chronomage';
     (root.querySelector('.cp-state') as HTMLElement).textContent = status.active
       ? `Active · ${profileLabel} · ${modeLabel}`
       : 'Paused';
@@ -518,8 +528,12 @@ export function mountChronoPilotPanel(controller: ChronoPilotController): Mounte
       actionText = `Place ${ABILITY_LABELS.get(decision.abilityId) ?? decision.abilityId}`;
     } else if (decision.type === 'target') {
       actionText = `Target ${decision.targetId}`;
+    } else if (decision.type === 'start-attack') {
+      actionText = `Auto-attack ${decision.targetId}`;
     } else if (decision.type === 'use-item') {
       actionText = `Use ${decision.itemId.replaceAll('_', ' ')}`;
+    } else if (decision.type === 'move') {
+      actionText = 'Dodge AoE';
     }
     (root.querySelector('.cp-action') as HTMLElement).textContent = actionText;
     (root.querySelector('.cp-reason') as HTMLElement).textContent = status.decision.reason;

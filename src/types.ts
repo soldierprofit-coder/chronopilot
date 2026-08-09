@@ -1,6 +1,16 @@
 export type AbilityId =
   | 'arcane_intellect'
   | 'frost_armor'
+  | 'fireball'
+  | 'fire_blast'
+  | 'dragons_breath'
+  | 'scorch'
+  | 'pyroblast'
+  | 'flamestrike'
+  | 'combustion'
+  | 'meteor'
+  | 'blazing_barrier'
+  | 'overload'
   | 'frostbolt'
   | 'ice_lance'
   | 'flurry'
@@ -40,30 +50,35 @@ export type AbilityId =
   | 'temporal_reversal'
   | 'collective_reversal';
 
-export type FrostAbilityId =
+export type FireAbilityId =
   | 'arcane_intellect'
   | 'frost_armor'
-  | 'frostbolt'
-  | 'ice_lance'
-  | 'flurry'
-  | 'frozen_orb'
-  | 'blizzard'
-  | 'glacial_spike'
-  | 'glacial_front'
-  | 'ice_barrier'
-  | 'icy_veins'
-  | 'summon_water_elemental'
-  | 'cone_of_cold'
+  | 'fireball'
+  | 'fire_blast'
+  | 'dragons_breath'
+  | 'scorch'
+  | 'pyroblast'
+  | 'flamestrike'
+  | 'combustion'
+  | 'meteor'
+  | 'blazing_barrier'
   | 'power_echo'
+  | 'overload'
   | 'presence_of_mind'
   | 'rune_of_power'
+  | 'ice_floes'
+  | 'cold_snap'
+  | 'greater_invisibility'
+  | 'rings_of_frost'
   | 'counterspell'
   | 'ice_block'
+  | 'blink'
+  | 'polymorph'
   | 'evocation'
   | 'frost_nova';
 
 export type ModuleKey = 'healing' | 'damageToHeal' | 'defensives' | 'interrupts' | 'resurrection';
-export type AssistProfile = 'auto' | 'chronomancy-healer' | 'frost-pve';
+export type AssistProfile = 'auto' | 'chronomancy-healer' | 'fire-dps';
 export type ResolvedAssistProfile = Exclude<AssistProfile, 'auto'>;
 export type CombatContextMode = 'solo' | 'party' | 'raid' | 'pvp';
 export type AssistMode = 'auto' | CombatContextMode;
@@ -77,7 +92,7 @@ export type EnemyTargetMode =
 export type FriendlyTargetMode = 'lowest-effective-hp' | 'tank-first' | 'current-friendly';
 
 export interface AbilityToggles extends Record<AbilityId, boolean> {}
-export interface FrostAbilityToggles extends Record<FrostAbilityId, boolean> {}
+export interface FireAbilityToggles extends Record<FireAbilityId, boolean> {}
 
 export interface HealingProfile {
   mendHpPct: number;
@@ -93,22 +108,20 @@ export interface HealingProfile {
   stopDamageManaPct: number;
 }
 
-export interface FrostProfile {
-  autoSummonWaterElemental: boolean;
-  smartFrostveilPreShield: boolean;
-  blizzardEnemyCount: number;
-  frozenOrbEnemyCount: number;
-  glacialFrontEnemyCount: number;
-  glacialFrontDurableTarget: boolean;
+export interface FireProfile {
+  smartBurst: boolean;
+  smartPreShield: boolean;
+  phoenixTranceDurableOnly: boolean;
+  useMeteorSingleTarget: boolean;
+  useDragonsBreathPve: boolean;
+  flamestrikeEnemyCount: number;
+  meteorEnemyCount: number;
+  dragonsBreathEnemyCount: number;
   conserveManaPct: number;
   stopDamageManaPct: number;
   aetherwellManaPct: number;
   barrierHpPct: number;
   iceBlockHpPct: number;
-  icyVeinsDurableOnly: boolean;
-  smartProcs: boolean;
-  smartGlacialBurst: boolean;
-  useIcebindPve: boolean;
 }
 
 export interface AssistSettings {
@@ -117,9 +130,9 @@ export interface AssistSettings {
   mode: AssistMode;
   modules: Record<ModuleKey, boolean>;
   abilities: AbilityToggles;
-  frostAbilities: FrostAbilityToggles;
+  fireAbilities: FireAbilityToggles;
   profiles: Record<CombatContextMode, HealingProfile>;
-  frost: FrostProfile;
+  fire: FireProfile;
   thresholds: {
     aetherwellManaPct: number;
     echoRefreshSeconds: number;
@@ -157,11 +170,14 @@ export interface AssistSettings {
     frostNovaEnemyCount: number;
     polymorphHpPct: number;
     hourglassHpPct: number;
+    fireAutoAttack: boolean;
+    fireBurst: boolean;
   };
   safety: {
     manualOverrideMs: number;
     disableInPvp: boolean;
     buffOutOfCombat: boolean;
+    dodgeAoe: boolean;
     decisionIntervalMs: number;
     toggleHotkey: string;
   };
@@ -226,6 +242,7 @@ export interface CombatObservation {
       maxCharges: number;
       recharge: number;
     }>;
+    autoAttacking: boolean;
   };
   party: UnitSnapshot[];
   enemies: EnemySnapshot[];
@@ -236,7 +253,6 @@ export interface CombatObservation {
   currentTargetId: number | null;
   lastEnemyTargetId: number | null;
   individualEcho: { targetId: number; remaining: number } | null;
-  frostPetActive: boolean;
   inventory: Readonly<Record<string, number>>;
   potionCooldownRemaining: number;
   partyRosterKey: string;
@@ -261,6 +277,7 @@ export type AssistDecision =
       reason: string;
     }
   | { type: 'target'; targetId: number; priority: number; reason: string }
+  | { type: 'start-attack'; targetId: number; priority: number; reason: string }
   | {
       type: 'cast-at';
       abilityId: AbilityId;
@@ -271,6 +288,13 @@ export type AssistDecision =
       reason: string;
     }
   | { type: 'use-item'; itemId: string; priority: number; reason: string }
+  | {
+      type: 'move';
+      x: number;
+      z: number;
+      priority: number;
+      reason: string;
+    }
   | { type: 'wait'; priority: number; reason: string };
 
 export interface RuntimeMemory {

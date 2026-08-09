@@ -1,48 +1,42 @@
 const {
   app,
   BrowserWindow,
+  dialog,
   globalShortcut,
   ipcMain,
   Menu,
   screen,
-  shell,
 } = require('electron');
+const { spawn } = require('node:child_process');
 const { readFileSync, writeFileSync } = require('node:fs');
+const net = require('node:net');
 const path = require('node:path');
+const { connectToGame } = require('./cdp-client.cjs');
+const { findOfficialClient, isOfficialClientExe } = require('./official-client.cjs');
 
-// Match the performance-oriented official desktop shell where Electron supports it.
-app.commandLine.appendSwitch('force-high-performance-gpu');
-app.commandLine.appendSwitch('force_high_performance_gpu');
-app.commandLine.appendSwitch('enable-gpu-rasterization');
-app.commandLine.appendSwitch('enable-zero-copy');
-
-const GAME_URL = 'https://worldofclaudecraft.com';
 const INJECT_SOURCE = readFileSync(
   path.join(__dirname, '..', 'dist-inject', 'chronopilot.js'),
   'utf8',
 );
+const ATTACH_TIMEOUT_MS = 25_000;
+const VISIBLE_SNAPSHOT_MS = 250;
+const HIDDEN_SNAPSHOT_MS = 1_000;
 
-let gameWindow = null;
 let controlWindow = null;
+let officialProcess = null;
+let cdpSession = null;
 let snapshotTimer = null;
+let snapshotInFlight = false;
 let isQuitting = false;
+let launchToken = 0;
+let attachPort = null;
+let nextInjectionCheck = 0;
 let lastSnapshot = { ready: false };
-let pendingLoginCode = null;
-
-function safeGamePreferences() {
-  return {
-    contextIsolation: true,
-    nodeIntegration: false,
-    sandbox: true,
-    spellcheck: false,
-    backgroundThrottling: false,
-    webviewTag: false,
-    webSecurity: true,
-    allowRunningInsecureContent: false,
-    disableBlinkFeatures: 'Autofill',
-    preload: path.join(__dirname, 'game-preload.cjs'),
-  };
-}
+let launcherState = {
+  phase: 'detecting',
+  exePath: '',
+  message: 'Looking for the official World of ClaudeCraft client…',
+};
 
 function safeControlPreferences() {
   return {
@@ -55,109 +49,319 @@ function safeControlPreferences() {
   };
 }
 
-function statePath() {
-  return path.join(app.getPath('userData'), 'control-window.json');
+function statePath(name) {
+  return path.join(app.getPath('userData'), name);
+}
+
+function readJson(name) {
+  try {
+    return JSON.parse(readFileSync(statePath(name), 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function writeJson(name, value) {
+  try {
+    writeFileSync(statePath(name), JSON.stringify(value, null, 2));
+  } catch {
+    // A saved window position and executable path are conveniences only.
+  }
 }
 
 function defaultControlBounds() {
-  const game = gameWindow?.getBounds() ?? { x: 100, y: 80, width: 1440, height: 900 };
-  const width = 450;
-  const height = Math.min(820, Math.max(640, game.height - 80));
+  const { workArea } = screen.getPrimaryDisplay();
+  const width = 470;
+  const height = Math.min(860, Math.max(640, workArea.height - 80));
   return {
-    x: game.x + game.width - width - 28,
-    y: game.y + 50,
+    x: workArea.x + workArea.width - width - 24,
+    y: workArea.y + 40,
     width,
     height,
   };
 }
 
 function savedControlBounds() {
-  try {
-    const state = JSON.parse(readFileSync(statePath(), 'utf8'));
-    if ([state.x, state.y, state.width, state.height].every(Number.isFinite)) {
-      const visible = screen.getAllDisplays().some(({ workArea }) => (
-        state.x < workArea.x + workArea.width
-        && state.x + state.width > workArea.x
-        && state.y < workArea.y + workArea.height
-        && state.y + state.height > workArea.y
-      ));
-      if (visible) return state;
-    }
-  } catch {
-    // First launch or an invalid old position: start over the game window.
+  const state = readJson('control-window.json');
+  if (state && [state.x, state.y, state.width, state.height].every(Number.isFinite)) {
+    const visible = screen.getAllDisplays().some(({ workArea }) => (
+      state.x < workArea.x + workArea.width
+      && state.x + state.width > workArea.x
+      && state.y < workArea.y + workArea.height
+      && state.y + state.height > workArea.y
+    ));
+    if (visible) return state;
   }
   return defaultControlBounds();
 }
 
 function saveControlBounds() {
   if (!controlWindow || controlWindow.isDestroyed() || controlWindow.isMinimized()) return;
-  try {
-    writeFileSync(statePath(), JSON.stringify(controlWindow.getBounds()));
-  } catch {
-    // Remembering the cosmetic window position is optional.
+  writeJson('control-window.json', controlWindow.getBounds());
+}
+
+function publishLauncherState(update = {}) {
+  launcherState = { ...launcherState, ...update };
+  if (controlWindow && !controlWindow.isDestroyed()) {
+    controlWindow.webContents.send('chronopilot-launcher-state', launcherState);
   }
 }
 
-function injectChronoPilot(targetWindow) {
-  void targetWindow.webContents.executeJavaScript(INJECT_SOURCE, true).catch((error) => {
-    console.error('ChronoPilot injection failed:', error);
-  });
-}
-
-function openDesktopLogin() {
-  void shell.openExternal(new URL('/desktop-login', GAME_URL).toString());
-}
-
-function deliverLoginCode(code) {
-  pendingLoginCode = code;
-  if (!gameWindow || gameWindow.isDestroyed()) return;
-  gameWindow.webContents.send('desktop-login-code', code);
-  if (gameWindow.isMinimized()) gameWindow.restore();
-  gameWindow.show();
-  gameWindow.focus();
-}
-
-function handleDeepLink(value) {
-  if (typeof value !== 'string') return;
-  let parsed;
-  try {
-    parsed = new URL(value);
-  } catch {
-    return;
-  }
-  if (parsed.protocol !== 'worldofclaudecraft:' || parsed.hostname !== 'desktop-login') return;
-  const code = parsed.searchParams.get('code');
-  if (code) deliverLoginCode(code);
-}
-
-async function sendCommand(command) {
-  if (!gameWindow || gameWindow.isDestroyed()) return false;
-  const encoded = JSON.stringify(command);
-  return gameWindow.webContents.executeJavaScript(
-    `window.__chronopilotApi?.command(${encoded}) ?? false`,
-    true,
-  );
-}
-
-async function pollSnapshot() {
-  if (!gameWindow || gameWindow.isDestroyed()) return;
-  try {
-    lastSnapshot = await gameWindow.webContents.executeJavaScript(
-      'window.__chronopilotApi?.snapshot() ?? { ready: false }',
-      true,
-    );
-  } catch {
-    lastSnapshot = { ready: false };
-  }
+function publishSnapshot(snapshot) {
+  lastSnapshot = snapshot;
   if (controlWindow && !controlWindow.isDestroyed()) {
     controlWindow.webContents.send('chronopilot-snapshot', lastSnapshot);
   }
 }
 
+function setOfficialClientPath(exePath) {
+  launcherState.exePath = exePath || '';
+  if (exePath) writeJson('official-client.json', { exePath });
+}
+
+async function detectOfficialClient() {
+  const savedPath = readJson('official-client.json')?.exePath;
+  const exePath = await findOfficialClient({ savedPath });
+  if (!exePath) {
+    publishLauncherState({
+      phase: 'not-found',
+      exePath: '',
+      message: 'Official client not found. Browse to World of ClaudeCraft.exe.',
+    });
+    return null;
+  }
+  setOfficialClientPath(exePath);
+  publishLauncherState({
+    phase: 'ready',
+    exePath,
+    message: 'Official client found. Launching it now…',
+  });
+  return exePath;
+}
+
+function getFreeLoopbackPort() {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.unref();
+    server.on('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+      const port = typeof address === 'object' && address ? address.port : null;
+      server.close((error) => {
+        if (error || !port) reject(error || new Error('Could not reserve a local port'));
+        else resolve(port);
+      });
+    });
+  });
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function closeCdpSession() {
+  const session = cdpSession;
+  cdpSession = null;
+  if (session) {
+    session.onDisconnected = null;
+    session.close();
+  }
+  nextInjectionCheck = 0;
+  publishSnapshot({ ready: false });
+}
+
+async function attachToOfficialClient(port, token, timeoutMs = ATTACH_TIMEOUT_MS) {
+  const deadline = Date.now() + timeoutMs;
+  while (!isQuitting && token === launchToken && Date.now() < deadline) {
+    try {
+      const session = await connectToGame(port);
+      if (session) {
+        if (token !== launchToken || isQuitting) {
+          session.close();
+          return false;
+        }
+        closeCdpSession();
+        cdpSession = session;
+        session.onDisconnected = () => {
+          if (cdpSession !== session || isQuitting || token !== launchToken) return;
+          cdpSession = null;
+          publishSnapshot({ ready: false });
+          publishLauncherState({
+            phase: 'attaching',
+            message: 'Game reloaded; reconnecting ChronoPilot…',
+          });
+          void attachToOfficialClient(port, token, 12_000).then((connected) => {
+            if (!connected && token === launchToken && !isQuitting) {
+              publishLauncherState({
+                phase: 'error',
+                message: 'The game restarted without the attach flag. Close it, then click Launch & Attach.',
+              });
+            }
+          });
+        };
+        publishLauncherState({
+          phase: 'attached',
+          message: 'Attached to the official client. Sign in and enter the world.',
+        });
+        scheduleSnapshotPoll(0);
+        return true;
+      }
+    } catch {
+      // The official shell and renderer may still be starting. Keep polling locally.
+    }
+    await delay(400);
+  }
+  return false;
+}
+
+async function launchAndAttach() {
+  if (['launching', 'attaching'].includes(launcherState.phase)) return false;
+  const exePath = launcherState.exePath;
+  if (!await isOfficialClientExe(exePath)) {
+    publishLauncherState({
+      phase: 'not-found',
+      exePath: '',
+      message: 'Select the installed World of ClaudeCraft.exe first.',
+    });
+    return false;
+  }
+
+  const token = ++launchToken;
+  closeCdpSession();
+  attachPort = await getFreeLoopbackPort();
+  publishLauncherState({
+    phase: 'launching',
+    message: 'Starting the official World of ClaudeCraft client…',
+  });
+
+  let child;
+  try {
+    child = spawn(exePath, [
+      '--remote-debugging-address=127.0.0.1',
+      `--remote-debugging-port=${attachPort}`,
+    ], {
+      cwd: path.dirname(exePath),
+      detached: false,
+      shell: false,
+      stdio: 'ignore',
+      windowsHide: false,
+    });
+  } catch (error) {
+    publishLauncherState({ phase: 'error', message: `Could not start the official client: ${error.message}` });
+    return false;
+  }
+  officialProcess = child;
+  child.once('error', (error) => {
+    if (token !== launchToken) return;
+    publishLauncherState({ phase: 'error', message: `Could not start the official client: ${error.message}` });
+  });
+  child.once('exit', () => {
+    if (officialProcess === child) officialProcess = null;
+    if (isQuitting || token !== launchToken) return;
+    closeCdpSession();
+    publishLauncherState({
+      phase: 'ready',
+      message: 'Official client closed or updated. Click Launch & Attach to start it again.',
+    });
+  });
+
+  publishLauncherState({
+    phase: 'attaching',
+    message: 'Official client started; waiting for its game window…',
+  });
+  const connected = await attachToOfficialClient(attachPort, token);
+  if (!connected && token === launchToken && !isQuitting) {
+    publishLauncherState({
+      phase: 'error',
+      message: 'Could not attach. Fully close any existing WoC client, then click Launch & Attach.',
+    });
+  }
+  return connected;
+}
+
+async function browseOfficialClient() {
+  const result = await dialog.showOpenDialog(controlWindow, {
+    title: 'Select World of ClaudeCraft.exe',
+    properties: ['openFile'],
+    filters: [{ name: 'World of ClaudeCraft', extensions: ['exe'] }],
+  });
+  const selected = result.canceled ? null : result.filePaths[0];
+  if (!selected) return launcherState;
+  if (!await isOfficialClientExe(selected)) {
+    publishLauncherState({ phase: 'error', message: 'That file is not a readable Windows executable.' });
+    return launcherState;
+  }
+  setOfficialClientPath(path.resolve(selected));
+  publishLauncherState({
+    phase: 'ready',
+    exePath: path.resolve(selected),
+    message: 'Official client selected. Click Launch & Attach.',
+  });
+  return launcherState;
+}
+
+async function ensureInjected() {
+  if (!cdpSession) return false;
+  const now = Date.now();
+  if (now < nextInjectionCheck) return true;
+  nextInjectionCheck = now + 1_000;
+  const installed = await cdpSession.evaluate('Boolean(window.__chronopilotApi)');
+  if (installed) return true;
+  await cdpSession.evaluate(`${INJECT_SOURCE}\n//# sourceURL=chronopilot-injected.js`);
+  return true;
+}
+
+async function sendCommand(command) {
+  if (!cdpSession) return false;
+  const encoded = JSON.stringify(command);
+  try {
+    return Boolean(await cdpSession.evaluate(`window.__chronopilotApi?.command(${encoded}) ?? false`));
+  } catch {
+    return false;
+  }
+}
+
+async function pollSnapshot() {
+  if (snapshotInFlight || isQuitting) return;
+  snapshotInFlight = true;
+  try {
+    if (!cdpSession) {
+      publishSnapshot({ ready: false });
+      return;
+    }
+    await ensureInjected();
+    const snapshot = await cdpSession.evaluate(
+      'window.__chronopilotApi?.snapshot() ?? { ready: false }',
+    );
+    publishSnapshot(snapshot && typeof snapshot === 'object' ? snapshot : { ready: false });
+    if (snapshot?.ready && launcherState.phase === 'attached') {
+      publishLauncherState({ message: 'Connected to the official game world.' });
+    }
+  } catch {
+    publishSnapshot({ ready: false });
+    nextInjectionCheck = 0;
+  } finally {
+    snapshotInFlight = false;
+  }
+}
+
+function scheduleSnapshotPoll(delayMs = 0) {
+  if (snapshotTimer) clearTimeout(snapshotTimer);
+  if (isQuitting) return;
+  snapshotTimer = setTimeout(async () => {
+    snapshotTimer = null;
+    await pollSnapshot();
+    const visible = controlWindow && !controlWindow.isDestroyed() && controlWindow.isVisible();
+    scheduleSnapshotPoll(visible ? VISIBLE_SNAPSHOT_MS : HIDDEN_SNAPSHOT_MS);
+  }, delayMs);
+}
+
 function showControlWindow() {
   if (!controlWindow || controlWindow.isDestroyed()) return;
+  if (controlWindow.isMinimized()) controlWindow.restore();
   controlWindow.show();
   controlWindow.focus();
+  scheduleSnapshotPoll(0);
 }
 
 function toggleControlWindow() {
@@ -167,15 +371,13 @@ function toggleControlWindow() {
 }
 
 function createControlWindow() {
-  const bounds = savedControlBounds();
   controlWindow = new BrowserWindow({
-    title: 'ChronoPilot Controls',
-    ...bounds,
-    minWidth: 390,
-    minHeight: 600,
+    title: 'ChronoPilot Official Launcher',
+    ...savedControlBounds(),
+    minWidth: 410,
+    minHeight: 620,
     backgroundColor: '#090b13',
     autoHideMenuBar: true,
-    parent: gameWindow,
     webPreferences: safeControlPreferences(),
   });
   controlWindow.setMenuBarVisibility(false);
@@ -191,63 +393,27 @@ function createControlWindow() {
   controlWindow.on('closed', () => { controlWindow = null; });
 }
 
-function createGameWindow() {
-  gameWindow = new BrowserWindow({
-    title: 'World of ClaudeCraft — ChronoPilot',
-    width: 1440,
-    height: 900,
-    minWidth: 1024,
-    minHeight: 700,
-    backgroundColor: '#10121c',
-    autoHideMenuBar: true,
-    webPreferences: safeGamePreferences(),
-  });
-  Menu.setApplicationMenu(null);
-  gameWindow.webContents.setWindowOpenHandler(({ url }) => {
-    // Keep authentication in the game window; open unrelated links in the default browser.
-    if (url.startsWith('https://worldofclaudecraft.com')) return { action: 'allow' };
-    void shell.openExternal(url);
-    return { action: 'deny' };
-  });
-  gameWindow.webContents.on('before-input-event', (event, input) => {
-    if (input.type !== 'keyDown' || input.isAutoRepeat) return;
-    const configured = lastSnapshot?.settings?.safety?.toggleHotkey;
-    if (typeof configured !== 'string' || configured.length < 1) return;
-    if (String(input.key).toLowerCase() !== configured.toLowerCase()) return;
-    event.preventDefault();
-    void sendCommand({ type: 'toggle' });
-  });
-  gameWindow.webContents.on('did-finish-load', () => injectChronoPilot(gameWindow));
-  void gameWindow.loadURL(GAME_URL);
-  gameWindow.on('closed', () => {
-    gameWindow = null;
-    isQuitting = true;
-    if (controlWindow && !controlWindow.isDestroyed()) controlWindow.destroy();
-    app.quit();
-  });
-  createControlWindow();
-}
-
 ipcMain.handle('chronopilot-command', (event, command) => {
   if (!controlWindow || event.sender !== controlWindow.webContents) return false;
   if (!command || !['start', 'stop', 'toggle', 'update-setting', 'update-settings'].includes(command.type)) return false;
-  return sendCommand(command);
+  return sendCommand(command).finally(() => scheduleSnapshotPoll(0));
 });
-ipcMain.handle('desktop-login-open-browser', (event) => {
-  if (!gameWindow || event.sender !== gameWindow.webContents) return null;
-  openDesktopLogin();
-  return null;
+ipcMain.handle('chronopilot-launcher-get', (event) => {
+  if (!controlWindow || event.sender !== controlWindow.webContents) return null;
+  return launcherState;
 });
-ipcMain.handle('desktop-login-take-code', (event) => {
-  if (!gameWindow || event.sender !== gameWindow.webContents) return null;
-  const code = pendingLoginCode;
-  pendingLoginCode = null;
-  return code;
+ipcMain.handle('chronopilot-launcher-browse', (event) => {
+  if (!controlWindow || event.sender !== controlWindow.webContents) return null;
+  return browseOfficialClient();
+});
+ipcMain.handle('chronopilot-launcher-start', (event) => {
+  if (!controlWindow || event.sender !== controlWindow.webContents) return false;
+  return launchAndAttach();
 });
 ipcMain.on('chronopilot-control-ready', (event) => {
-  if (controlWindow && event.sender === controlWindow.webContents) {
-    event.sender.send('chronopilot-snapshot', lastSnapshot);
-  }
+  if (!controlWindow || event.sender !== controlWindow.webContents) return;
+  event.sender.send('chronopilot-snapshot', lastSnapshot);
+  event.sender.send('chronopilot-launcher-state', launcherState);
 });
 ipcMain.on('chronopilot-control-pin', (event, enabled) => {
   if (controlWindow && event.sender === controlWindow.webContents) {
@@ -258,44 +424,32 @@ ipcMain.on('chronopilot-control-hide', (event) => {
   if (controlWindow && event.sender === controlWindow.webContents) controlWindow.hide();
 });
 
-app.setAppUserModelId('com.chronopilot.lazyclient');
+app.setAppUserModelId('com.chronopilot.launcher');
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 if (!hasSingleInstanceLock) {
   app.quit();
 } else {
-  if (process.defaultApp && process.argv.length >= 2) {
-    app.setAsDefaultProtocolClient('worldofclaudecraft', process.execPath, [path.resolve(process.argv[1])]);
-  } else {
-    app.setAsDefaultProtocolClient('worldofclaudecraft');
-  }
-  for (const argument of process.argv) handleDeepLink(argument);
-  app.on('second-instance', (_event, argv) => {
-    for (const argument of argv) handleDeepLink(argument);
-    if (gameWindow && !gameWindow.isDestroyed()) {
-      if (gameWindow.isMinimized()) gameWindow.restore();
-      gameWindow.show();
-      gameWindow.focus();
-    }
-  });
-  app.on('open-url', (event, url) => {
-    event.preventDefault();
-    handleDeepLink(url);
-  });
-  app.whenReady().then(() => {
-    createGameWindow();
-    snapshotTimer = setInterval(() => { void pollSnapshot(); }, 250);
+  app.on('second-instance', showControlWindow);
+  app.whenReady().then(async () => {
+    Menu.setApplicationMenu(null);
+    // Old ChronoPilot builds registered the game's login protocol. The official
+    // client must own that callback now, because it owns authentication.
+    try { app.removeAsDefaultProtocolClient('worldofclaudecraft'); } catch { /* optional cleanup */ }
+    createControlWindow();
+    scheduleSnapshotPoll(0);
     globalShortcut.register('F10', toggleControlWindow);
-    app.on('activate', () => {
-      if (!gameWindow) createGameWindow();
-      else showControlWindow();
-    });
+    const exePath = await detectOfficialClient();
+    if (exePath && !isQuitting) void launchAndAttach();
+    app.on('activate', showControlWindow);
   });
 }
 
 app.on('before-quit', () => {
   isQuitting = true;
-  if (snapshotTimer) clearInterval(snapshotTimer);
+  launchToken += 1;
+  if (snapshotTimer) clearTimeout(snapshotTimer);
   snapshotTimer = null;
+  closeCdpSession();
   globalShortcut.unregisterAll();
 });
 

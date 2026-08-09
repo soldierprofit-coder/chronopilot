@@ -1,7 +1,7 @@
 import { mountChronoPilot, type MountedChronoPilot } from './index.js';
 import { saveSettings } from './settings-store.js';
 import { isSafeSettingPath } from './settings-path.js';
-import type { WocWorldLike } from './woc-adapter.js';
+import type { WocMovementLike, WocWorldLike } from './woc-adapter.js';
 
 interface DesktopSettingUpdate {
   path?: string;
@@ -29,7 +29,7 @@ interface ChronoPilotDesktopApi {
 
 declare global {
   interface Window {
-    __game?: { world?: WocWorldLike };
+    __game?: { world?: WocWorldLike; input?: WocMovementLike };
     __chronopilot?: MountedChronoPilot;
     __chronopilotBootstrapInstalled?: boolean;
     __chronopilotApi?: ChronoPilotDesktopApi;
@@ -102,7 +102,10 @@ if (!window.__chronopilotBootstrapInstalled) {
   window.__chronopilotBootstrapInstalled = true;
   const tryMount = (): void => {
     if (window.__chronopilot || !window.__game?.world) return;
-    window.__chronopilot = mountChronoPilot(window.__game.world, { showPanel: false });
+    window.__chronopilot = mountChronoPilot(window.__game.world, {
+      showPanel: false,
+      movement: window.__game.input,
+    });
   };
   tryMount();
   window.setInterval(tryMount, 1_000);

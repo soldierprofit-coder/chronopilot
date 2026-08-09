@@ -39,7 +39,7 @@ h1 { margin: 6px 0 2px; font-size: 21px; letter-spacing: -.02em; }
 .pin { color: var(--muted); font-size: 11px; white-space: nowrap; }
 .pin input { accent-color: var(--violet); vertical-align: -2px; }
 
-.tabs { position: sticky; top: 0; z-index: 4; display: grid; grid-template-columns: repeat(5, 1fr); background: #0d101a; border-bottom: 1px solid var(--line); }
+.tabs { position: sticky; top: 0; z-index: 4; display: grid; grid-template-columns: repeat(6, 1fr); background: #0d101a; border-bottom: 1px solid var(--line); }
 .tab { padding: 11px 4px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); font-size: 11px; font-weight: 750; cursor: pointer; }
 .tab.active { color: var(--cyan); border-bottom-color: var(--cyan); }
 main { padding: 14px; }
@@ -63,6 +63,15 @@ main { padding: 14px; }
 small { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; line-height: 1.35; }
 select { width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 7px; padding: 7px 8px; color: var(--text); background: #0e1220; outline: none; }
 select:focus { border-color: var(--violet); }
+.launcher-message { margin: 0 0 10px; color: #cbd1e4; font-size: 11px; line-height: 1.45; }
+.path-input { width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 7px; padding: 8px 9px; color: var(--muted); background: #090c16; outline: none; font-size: 10px; }
+.launcher-actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; margin-top: 9px; }
+.primary-button, .secondary-button { border-radius: 8px; padding: 9px 10px; font-size: 10px; font-weight: 800; letter-spacing: .04em; cursor: pointer; }
+.primary-button { border: 0; color: #07110e; background: linear-gradient(120deg, var(--green), var(--cyan)); }
+.secondary-button { border: 1px solid var(--line); color: #d8dced; background: #151929; }
+.primary-button:disabled, .secondary-button:disabled { opacity: .45; cursor: wait; }
+.launcher-card[data-phase="attached"] .badge { border-color: rgba(82, 227, 164, .35); color: var(--green); background: rgba(82, 227, 164, .08); }
+.launcher-card[data-phase="error"] .badge, .launcher-card[data-phase="not-found"] .badge { border-color: rgba(255, 112, 135, .35); color: var(--red); background: rgba(255, 112, 135, .08); }
 input[type="checkbox"] { appearance: none; width: 36px; height: 20px; padding: 2px; border: 1px solid #3c435c; border-radius: 999px; background: #1b2030; cursor: pointer; }
 input[type="checkbox"]::after { content: ""; display: block; width: 14px; height: 14px; border-radius: 50%; background: #798197; transition: transform .16s, background .16s; }
 input[type="checkbox"]:checked { border-color: var(--violet); background: rgba(155,124,255,.28); }

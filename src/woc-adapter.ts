@@ -1,4 +1,11 @@
-import type { AssistSettings, AuraSnapshot, CombatObservation, RuntimeMemory, UnitSnapshot } from './types.js';
+import type {
+  AssistSettings,
+  AuraSnapshot,
+  CombatObservation,
+  EnemySnapshot,
+  RuntimeMemory,
+  UnitSnapshot,
+} from './types.js';
 
 interface WocAuraLike {
   id?: unknown;
@@ -28,6 +35,7 @@ interface WocEntityLike {
   castingAbility: string | null;
   channeling: boolean;
   gcdRemaining: number;
+  autoAttack?: boolean;
   potionCdRemaining?: number;
   cooldowns: Map<string, number>;
   abilityCharges?: Record<string, {
@@ -90,6 +98,19 @@ interface WocPartyMemberLike {
   auras?: WocAuraLike[];
 }
 
+export interface WocRiftDeathZoneLike {
+  x: number;
+  z: number;
+  radius: number;
+  remaining: number;
+}
+
+export interface WocMovementLike {
+  setControllerMoveInput(input: unknown, facing?: unknown): void;
+  setControllerFacing?(facing: unknown): void;
+  clearControllerMoveInput(): void;
+}
+
 export interface WocWorldLike {
   playerId: number;
   player: WocEntityLike;
@@ -103,14 +124,30 @@ export interface WocWorldLike {
   cupInfo?: { match?: unknown } | null;
   bgInfo?: WocBattlegroundInfoLike | null;
   cfg?: { playerClass?: string };
+  riftBossDeathZones?(): WocRiftDeathZoneLike[];
   castAbility(abilityId: string): void;
   castAbilityAt(abilityId: string, aim: { x: number; z: number }): void;
   castAbilityOn(abilityId: string, targetId: number): void;
   targetEntity(id: number | null): void;
   useItem(itemId: string): void;
+  startAutoAttack?(): void;
 }
 
 const CROWD_CONTROL = new Set(['stun', 'stasis', 'incapacitate', 'polymorph', 'blind', 'hex']);
+const MIN_OBSERVATION_RADIUS = 40;
+
+function distanceSquared(
+  a: { x: number; z: number },
+  b: { x: number; z: number },
+): number {
+  const dx = a.x - b.x;
+  const dz = a.z - b.z;
+  return dx * dx + dz * dz;
+}
+
+export function observationRadius(settings: Pick<AssistSettings, 'targeting'>): number {
+  return Math.max(MIN_OBSERVATION_RADIUS, settings.targeting.maxTargetRange + 10);
+}
 
 function auras(source: readonly WocAuraLike[] | undefined): AuraSnapshot[] {
   return (source ?? []).flatMap((aura) => {
@@ -251,12 +288,21 @@ export function observeWocWorld(
     group.find((member) => member.role === 'tank' && !member.dead)?.id ??
     null;
   const pvpOpponentIds = activePvpOpponentIds(world);
-  const enemies = [...world.entities.values()]
-    .filter((entity) =>
-      entity.kind !== 'object' &&
-      (entity.hostile || pvpOpponentIds.has(entity.id) || pvpOpponentIds.has(entity.ownerId ?? -1)),
-    )
-    .map((entity) => ({
+  const maxDistanceSquared = observationRadius(settings) ** 2;
+  const enemies: EnemySnapshot[] = [];
+  for (const entity of world.entities.values()) {
+    const legalEnemy =
+      entity.hostile ||
+      pvpOpponentIds.has(entity.id) ||
+      pvpOpponentIds.has(entity.ownerId ?? -1);
+    if (
+      entity.kind === 'object' ||
+      !legalEnemy ||
+      distanceSquared(self, entity.pos) > maxDistanceSquared
+    ) {
+      continue;
+    }
+    enemies.push({
       id: entity.id,
       name: entity.name,
       hp: entity.hp,
@@ -264,7 +310,7 @@ export function observeWocWorld(
       x: entity.pos.x,
       z: entity.pos.z,
       dead: entity.dead,
-      hostile: entity.hostile || pvpOpponentIds.has(entity.id) || pvpOpponentIds.has(entity.ownerId ?? -1),
+      hostile: legalEnemy,
       inCombat: entity.inCombat,
       targetId: entity.aggroTargetId ?? entity.targetId,
       castingAbility: entity.castingAbility,
@@ -272,7 +318,8 @@ export function observeWocWorld(
         typeof aura.kind === 'string' ? CROWD_CONTROL.has(aura.kind) : false,
       ),
       auras: auras(entity.auras),
-    }));
+    });
+  }
   const selectedEnemy = enemies.find(
     (enemy) => enemy.id === world.player.targetId && !enemy.dead && enemy.hostile,
   );
@@ -328,6 +375,7 @@ export function observeWocWorld(
           },
         ]),
       ),
+      autoAttacking: world.player.autoAttack === true,
     },
     party: group,
     enemies,
@@ -338,13 +386,6 @@ export function observeWocWorld(
     currentTargetId: world.player.targetId,
     lastEnemyTargetId: memory.lastEnemyTargetId,
     individualEcho: visibleIndividualEcho ?? rememberedIndividualEcho,
-    frostPetActive: [...world.entities.values()].some(
-      (entity) =>
-        entity.id !== self.id &&
-        entity.ownerId === self.id &&
-        !entity.dead &&
-        entity.kind !== 'object',
-    ),
     inventory: Object.fromEntries(world.inventory.map((slot) => [slot.itemId, slot.count])),
     potionCooldownRemaining: world.player.potionCdRemaining ?? 0,
     partyRosterKey,
